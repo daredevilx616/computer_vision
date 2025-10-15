@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Object Measurement App</title>
+<style>
+body { background:#111; color:#fff; text-align:center; font-family:Arial; }
+img { border:2px solid #fff; cursor:crosshair; }
+input, button { margin:5px; padding:5px; }
+</style>
+</head>
+<body>
+<h1>Object Measurement App</h1>
+
+<!-- Live video feed -->
+<img id="video" src="{{ url_for('video_feed') }}" width="640" height="480">
+
+<!-- Calibration -->
+<div>
+    <h3>Calibration (Reference Object)</h3>
+    Pixel Width: <input id="calibPixel" type="number" placeholder="Pixels"><br>
+    Real Width: <input id="calibReal" type="number" placeholder="Real Width"><br>
+    Distance: <input id="calibDistance" type="number" placeholder="Distance"><br>
+    Units: <input id="units" value="cm"><br>
+    <button onclick="calibrate()">Calibrate</button>
+</div>
+
+<!-- Measurement -->
+<div>
+    <h3>Measure Object</h3>
+    Pixel Width: <input id="objPixel" type="number" placeholder="Pixels"><br>
+    Distance: <input id="objDistance" type="number" placeholder="Distance"><br>
+    <button onclick="measure()">Measure</button>
+</div>
+
+<p id="result"></p>
+
+<script>
+async function calibrate(){
+    const res = await fetch("/calibrate", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            pixel_width: document.getElementById("calibPixel").value,
+            real_width: document.getElementById("calibReal").value,
+            distance: document.getElementById("calibDistance").value,
+            units: document.getElementById("units").value
+        })
+    });
+    const data = await res.json();
+    if(data.status==="success") alert("Calibration done! Focal length: "+data.focal_length_pixels.toFixed(2));
+    else alert("Error: "+data.message);
+}
+
+async function measure(){
+    const res = await fetch("/measure", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            pixel_width: document.getElementById("objPixel").value,
+            distance: document.getElementById("objDistance").value
+        })
+    });
+    const data = await res.json();
+    if(data.status==="error") alert("Error: "+data.message);
+    else document.getElementById("result").innerText = "Real-world size: "+data.real_size.toFixed(2)+" "+data.units;
+}
+</script>
+
+</body>
+</html>
