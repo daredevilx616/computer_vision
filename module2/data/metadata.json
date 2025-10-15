@@ -1,0 +1,148 @@
+{
+  "templates": [
+    {
+      "name": "blue_circle",
+      "path": "data\\templates\\blue_circle.png"
+    },
+    {
+      "name": "green_square",
+      "path": "data\\templates\\green_square.png"
+    },
+    {
+      "name": "red_triangle",
+      "path": "data\\templates\\red_triangle.png"
+    },
+    {
+      "name": "yellow_diamond",
+      "path": "data\\templates\\yellow_diamond.png"
+    },
+    {
+      "name": "magenta_cross",
+      "path": "data\\templates\\magenta_cross.png"
+    },
+    {
+      "name": "cyan_ring",
+      "path": "data\\templates\\cyan_ring.png"
+    },
+    {
+      "name": "orange_pentagon",
+      "path": "data\\templates\\orange_pentagon.png"
+    },
+    {
+      "name": "white_plus",
+      "path": "data\\templates\\white_plus.png"
+    },
+    {
+      "name": "purple_arrow",
+      "path": "data\\templates\\purple_arrow.png"
+    },
+    {
+      "name": "aqua_halfmoon",
+      "path": "data\\templates\\aqua_halfmoon.png"
+    }
+  ],
+  "scenes": [
+    {
+      "name": "scene_boardwalk",
+      "path": "data\\scenes\\scene_boardwalk.png",
+      "placements": [
+        {
+          "shape": "blue_circle",
+          "top": 81,
+          "left": 74,
+          "height": 96,
+          "width": 96
+        },
+        {
+          "shape": "yellow_diamond",
+          "top": 205,
+          "left": 209,
+          "height": 96,
+          "width": 96
+        },
+        {
+          "shape": "white_plus",
+          "top": 28,
+          "left": 195,
+          "height": 96,
+          "width": 96
+        },
+        {
+          "shape": "purple_arrow",
+          "top": 204,
+          "left": 41,
+          "height": 96,
+          "width": 96
+        }
+      ]
+    },
+    {
+      "name": "scene_museum",
+      "path": "data\\scenes\\scene_museum.png",
+      "placements": [
+        {
+          "shape": "green_square",
+          "top": 83,
+          "left": 61,
+          "height": 96,
+          "width": 96
+        },
+        {
+          "shape": "cyan_ring",
+          "top": 71,
+          "left": 201,
+          "height": 96,
+          "width": 96
+        },
+        {
+          "shape": "aqua_halfmoon",
+          "top": 190,
+          "left": 62,
+          "height": 96,
+          "width": 96
+        },
+        {
+          "shape": "red_triangle",
+          "top": 195,
+          "left": 166,
+          "height": 96,
+          "width": 96
+        }
+      ]
+    },
+    {
+      "name": "scene_plaza",
+      "path": "data\\scenes\\scene_plaza.png",
+      "placements": [
+        {
+          "shape": "magenta_cross",
+          "top": 154,
+          "left": 168,
+          "height": 96,
+          "width": 96
+        },
+        {
+          "shape": "orange_pentagon",
+          "top": 13,
+          "left": 91,
+          "height": 96,
+          "width": 96
+        },
+        {
+          "shape": "blue_circle",
+          "top": 167,
+          "left": 30,
+          "height": 96,
+          "width": 96
+        },
+        {
+          "shape": "cyan_ring",
+          "top": 23,
+          "left": 198,
+          "height": 96,
+          "width": 96
+        }
+      ]
+    }
+  ]
+}

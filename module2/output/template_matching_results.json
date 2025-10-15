@@ -1,0 +1,155 @@
+{
+  "results": [
+    {
+      "scene": "scene_boardwalk",
+      "detections": [
+        {
+          "label": "blue_circle",
+          "confidence": 0.769318699836731,
+          "box": {
+            "left": 74,
+            "top": 81,
+            "right": 170,
+            "bottom": 177
+          }
+        },
+        {
+          "label": "yellow_diamond",
+          "confidence": 0.8949132561683655,
+          "box": {
+            "left": 209,
+            "top": 205,
+            "right": 305,
+            "bottom": 301
+          }
+        },
+        {
+          "label": "magenta_cross",
+          "confidence": 0.7293788194656372,
+          "box": {
+            "left": 194,
+            "top": 28,
+            "right": 290,
+            "bottom": 124
+          }
+        },
+        {
+          "label": "white_plus",
+          "confidence": 0.9901189804077148,
+          "box": {
+            "left": 195,
+            "top": 28,
+            "right": 291,
+            "bottom": 124
+          }
+        },
+        {
+          "label": "purple_arrow",
+          "confidence": 0.7261753082275391,
+          "box": {
+            "left": 41,
+            "top": 204,
+            "right": 137,
+            "bottom": 300
+          }
+        }
+      ],
+      "metrics": {
+        "precision_at_0.5": 0.8,
+        "recall_at_0.5": 1.0
+      },
+      "output_image": "output\\scene_boardwalk_detections.png"
+    },
+    {
+      "scene": "scene_museum",
+      "detections": [
+        {
+          "label": "red_triangle",
+          "confidence": 0.713064432144165,
+          "box": {
+            "left": 166,
+            "top": 195,
+            "right": 262,
+            "bottom": 291
+          }
+        },
+        {
+          "label": "cyan_ring",
+          "confidence": 0.9468786716461182,
+          "box": {
+            "left": 201,
+            "top": 71,
+            "right": 297,
+            "bottom": 167
+          }
+        },
+        {
+          "label": "aqua_halfmoon",
+          "confidence": 0.8601300716400146,
+          "box": {
+            "left": 62,
+            "top": 190,
+            "right": 158,
+            "bottom": 286
+          }
+        }
+      ],
+      "metrics": {
+        "precision_at_0.5": 1.0,
+        "recall_at_0.5": 0.75
+      },
+      "output_image": "output\\scene_museum_detections.png"
+    },
+    {
+      "scene": "scene_plaza",
+      "detections": [
+        {
+          "label": "yellow_diamond",
+          "confidence": 0.7473487257957458,
+          "box": {
+            "left": 91,
+            "top": 9,
+            "right": 187,
+            "bottom": 105
+          }
+        },
+        {
+          "label": "magenta_cross",
+          "confidence": 0.8857082724571228,
+          "box": {
+            "left": 168,
+            "top": 154,
+            "right": 264,
+            "bottom": 250
+          }
+        },
+        {
+          "label": "cyan_ring",
+          "confidence": 0.9598320722579956,
+          "box": {
+            "left": 198,
+            "top": 23,
+            "right": 294,
+            "bottom": 119
+          }
+        },
+        {
+          "label": "orange_pentagon",
+          "confidence": 0.9514228105545044,
+          "box": {
+            "left": 91,
+            "top": 13,
+            "right": 187,
+            "bottom": 109
+          }
+        }
+      ],
+      "metrics": {
+        "precision_at_0.5": 0.75,
+        "recall_at_0.5": 0.75
+      },
+      "output_image": "output\\scene_plaza_detections.png"
+    }
+  ],
+  "threshold": 0.68
+}
