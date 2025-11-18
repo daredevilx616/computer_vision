@@ -1,4 +1,4 @@
 Flask
-opencv-python
+opencv-contrib-python
 numpy
 Pillow

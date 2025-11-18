@@ -23,6 +23,22 @@
 # misc
 .DS_Store
 *.pem
+module2/uploads/*
+!module2/uploads/.gitkeep
+module2/output/*
+!module2/output/.gitkeep
+module3/uploads/*
+!module3/uploads/.gitkeep
+module3/output/*
+!module3/output/.gitkeep
+module4/uploads/*
+!module4/uploads/.gitkeep
+module4/output/*
+!module4/output/.gitkeep
+module7/uploads/*
+!module7/uploads/.gitkeep
+module7/output/*
+!module7/output/.gitkeep
 
 # debug
 npm-debug.log*
@@ -39,3 +55,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/assignment_modules
