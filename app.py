@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from module2.fourier_deblur import process_image as fourier_process
+from module2 import run_template_matching as tm
 
 app = Flask(__name__)
 
@@ -39,6 +40,16 @@ def _to_data_url(image: np.ndarray) -> str:
         raise RuntimeError("Failed to encode image buffer.")
     b64 = base64.b64encode(buf.tobytes()).decode("ascii")
     return f"data:image/png;base64,{b64}"
+
+
+def _side_by_side(img_a: np.ndarray, img_b: np.ndarray) -> np.ndarray:
+    """Place two images side by side on a black canvas."""
+    h = max(img_a.shape[0], img_b.shape[0])
+    w = img_a.shape[1] + img_b.shape[1]
+    canvas = np.zeros((h, w, 3), dtype=np.uint8)
+    canvas[: img_a.shape[0], : img_a.shape[1]] = img_a
+    canvas[: img_b.shape[0], img_a.shape[1] :] = img_b
+    return canvas
 
 @app.route("/")
 def index():
@@ -143,13 +154,12 @@ def api_template_matching():
     save_path = uploads_dir / file.filename
     file.save(save_path)
 
-    # Ensure module2 uses tmp output
-    os.environ["MODULE2_OUTPUT_DIR"] = str(output_dir)
-    from module2 import run_template_matching as tm
-    tm.OUTPUT_DIR = output_dir
-    tm.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
     try:
+        # Ensure module2 uses tmp output
+        os.environ["MODULE2_OUTPUT_DIR"] = str(output_dir)
+        tm.OUTPUT_DIR = output_dir
+        tm.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
         result = tm.run_detection(save_path, threshold=threshold)
         annotated_path = Path(result["annotated_image"])
         if not annotated_path.is_absolute():
@@ -219,6 +229,106 @@ def api_assignment3():
         return jsonify(scores)
 
     return jsonify({"error": f"Unsupported operation {operation}"}), 400
+
+
+# ---------------- Module 4: SIFT & Stitching -----------------
+@app.route("/api/assignment4/sift", methods=["POST"])
+def api_sift():
+    file_a = request.files.get("imageA")
+    file_b = request.files.get("imageB")
+    if not file_a or not file_b:
+        return jsonify({"error": "Two image uploads are required."}), 400
+
+    base_tmp = Path(os.getenv("MODULE4_BASE_DIR", "/tmp/module4"))
+    uploads_dir = base_tmp / "uploads"
+    output_dir = base_tmp / "output"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    path_a = uploads_dir / file_a.filename
+    path_b = uploads_dir / file_b.filename
+    file_a.save(path_a)
+    file_b.save(path_b)
+
+    import module4.sift as msift
+    import module4.stitcher as mstitch
+
+    msift.OUTPUT_DIR = output_dir
+    mstitch.OUTPUT_DIR = output_dir
+
+    try:
+        img_a = cv2.imread(str(path_a))
+        img_b = cv2.imread(str(path_b))
+        res_a = msift.sift(img_a)
+        res_b = msift.sift(img_b)
+        matches = msift.match_descriptors(res_a.descriptors, res_b.descriptors)
+        H, inliers = msift.ransac_homography(matches, res_a.keypoints, res_b.keypoints)
+        visual = msift.draw_matches(img_a, img_b, res_a.keypoints, res_b.keypoints, matches, inliers)
+        visual_path = output_dir / "sift_matches.png"
+        cv2.imwrite(str(visual_path), visual)
+
+        # OpenCV SIFT + BF matcher for comparison (robust even if no good matches)
+        cv_match_count = 0
+        cv_visual = _side_by_side(img_a, img_b)
+        try:
+            sift_cv = cv2.SIFT_create()
+            kpa, des_a_cv = sift_cv.detectAndCompute(cv2.cvtColor(img_a, cv2.COLOR_BGR2GRAY), None)
+            kpb, des_b_cv = sift_cv.detectAndCompute(cv2.cvtColor(img_b, cv2.COLOR_BGR2GRAY), None)
+            bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
+            raw_matches = bf.knnMatch(des_a_cv, des_b_cv, k=2) if des_a_cv is not None and des_b_cv is not None else []
+            good = []
+            for m_n in raw_matches:
+                if len(m_n) < 2:
+                    continue
+                m, n = m_n
+                if m.distance < 0.75 * n.distance:
+                    good.append(m)
+            cv_match_count = len(good)
+            if good:
+                cv_visual = cv2.drawMatches(img_a, kpa, img_b, kpb, good, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+        except Exception:
+            cv_match_count = 0
+            cv_visual = _side_by_side(img_a, img_b)
+
+        payload = {
+            "match_count": len(matches),
+            "inliers": len(inliers),
+            "homography": H.tolist(),
+            "visual": _to_data_url(visual),
+            "cv_match_count": cv_match_count,
+            "cv_visual": _to_data_url(cv_visual),
+        }
+        return jsonify(payload)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/assignment4/stitch", methods=["POST"])
+def api_stitch():
+    images = [f for f in request.files.getlist("images") if f.filename]
+    if len(images) < 2:
+        return jsonify({"error": "Upload at least two images for stitching."}), 400
+
+    base_tmp = Path(os.getenv("MODULE4_BASE_DIR", "/tmp/module4"))
+    uploads_dir = base_tmp / "uploads"
+    output_dir = base_tmp / "output"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    paths = []
+    for idx, f in enumerate(images):
+        path = uploads_dir / f"{idx}_{f.filename}"
+        f.save(path)
+        paths.append(path)
+
+    import module4.stitcher as mstitch
+    mstitch.OUTPUT_DIR = output_dir
+    try:
+        imgs = [cv2.imread(str(p)) for p in paths]
+        result = mstitch.stitch_images(imgs)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=8000, debug=True)
