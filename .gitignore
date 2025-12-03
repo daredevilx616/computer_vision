@@ -19,7 +19,7 @@
 
 # production
 /build
-
+.claude
 # misc
 .DS_Store
 *.pem
@@ -29,9 +29,10 @@ module2/output/*
 module2/output/template_matching_results.json
 !module2/output/.gitkeep
 module3/uploads/*
+module3/aruco_markers
+module3/sam2_checkpoints
 !module3/uploads/.gitkeep
-module3/output/*
-!module3/output/.gitkeep
+module3/output/
 module4/uploads/*
 !module4/uploads/.gitkeep
 module4/output/*

@@ -7,7 +7,13 @@
       "Bash(python test_templates.py:*)",
       "Bash(python assignment2_simple_matcher.py:*)",
       "Bash(python assignment2_matcher.py:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(dir:*)",
+      "Bash(copy \"C:\\Users\\abdul\\Documents\\python\\cv_modules\\computer_vision\\module3\\uploads\\ArUco\\WhatsApp Image 2025-12-03 at 1.34.30 AM.jpeg\" \"C:\\Users\\abdul\\Documents\\python\\cv_modules\\computer_vision\\module3\\uploads\\aruco_bottle_1.jpeg\")",
+      "Bash(copy \"C:\\Users\\abdul\\Documents\\python\\cv_modules\\computer_vision\\module3\\uploads\\ArUco\\WhatsApp Image 2025-12-03 at 1.34.30 AM (1).jpeg\" \"C:\\Users\\abdul\\Documents\\python\\cv_modules\\computer_vision\\module3\\uploads\\aruco_bottle_2.jpeg\")",
+      "Bash(copy \"C:\\Users\\abdul\\Documents\\python\\cv_modules\\computer_vision\\module3\\uploads\\ArUco\\WhatsApp Image 2025-12-03 at 1.34.30 AM (2).jpeg\" \"C:\\Users\\abdul\\Documents\\python\\cv_modules\\computer_vision\\module3\\uploads\\aruco_bottle_3.jpeg\")",
+      "Bash(copy \"C:\\Users\\abdul\\Documents\\python\\cv_modules\\computer_vision\\module3\\uploads\\ArUco\\WhatsApp Image 2025-12-03 at 1.34.30 AM (3).jpeg\" \"C:\\Users\\abdul\\Documents\\python\\cv_modules\\computer_vision\\module3\\uploads\\aruco_bottle_4.jpeg\")",
+      "Bash(copy \"C:\\Users\\abdul\\Documents\\python\\cv_modules\\computer_vision\\module3\\uploads\\ArUco\\WhatsApp Image 2025-12-03 at 1.34.30 AM (4).jpeg\" \"C:\\Users\\abdul\\Documents\\python\\cv_modules\\computer_vision\\module3\\uploads\\aruco_bottle_5.jpeg\")"
     ],
     "deny": [],
     "ask": []

@@ -5,7 +5,9 @@ This script is called by the web API to detect ALL templates in a scene.
 
 import argparse
 import json
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 import cv2
@@ -13,8 +15,12 @@ import numpy as np
 
 from .detector import detect_scene, load_templates, annotate_detections, BASE_DIR
 
-OUTPUT_DIR = BASE_DIR / "output"
-OUTPUT_DIR.mkdir(exist_ok=True)
+_default_output = BASE_DIR / "output"
+if os.getenv("VERCEL"):
+    OUTPUT_DIR = Path(os.getenv("MODULE2_OUTPUT_DIR", "/tmp/module2_output"))
+else:
+    OUTPUT_DIR = Path(os.getenv("MODULE2_OUTPUT_DIR", _default_output))
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def run_detection(scene_path: Path, threshold: float = 0.7, only: list[str] | None = None) -> dict:

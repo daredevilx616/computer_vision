@@ -187,6 +187,22 @@ export default function FourierLabPage() {
         </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-300 md:text-base">
+          <h2 className="text-lg font-semibold text-slate-100">Demo Video</h2>
+          <p className="text-sm text-slate-400 mb-3">
+            Quick walkthrough of the Gaussian blur + Fourier/Wiener deblur pipeline on real images.
+          </p>
+          <div className="w-full overflow-hidden rounded-xl border border-slate-700 bg-black aspect-video">
+            <iframe
+              className="w-full h-full"
+              src="https://www.youtube.com/embed/hrnb7dWY5bw"
+              title="Module 2 Fourier demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-300 md:text-base">
           <h3 className="text-lg font-semibold text-slate-100">How it works</h3>
           <ol className="mt-3 space-y-2 list-decimal pl-6">
             <li>Convert your uploaded image to grayscale float values.</li>
@@ -200,4 +216,3 @@ export default function FourierLabPage() {
     </div>
   );
 }
-

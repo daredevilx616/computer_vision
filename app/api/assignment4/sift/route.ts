@@ -3,7 +3,8 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 
-const MODULE_UPLOAD = path.join(process.cwd(), 'module4', 'uploads');
+const BASE_DIR = process.env.VERCEL ? '/tmp' : process.cwd();
+const MODULE_UPLOAD = path.join(BASE_DIR, 'module4', 'uploads');
 
 type PythonResult = { stdout: string; stderr: string };
 
@@ -23,7 +24,12 @@ async function spawnPython(args: string[]): Promise<PythonResult> {
   for (const command of candidates) {
     try {
       return await new Promise<PythonResult>((resolve, reject) => {
-        const child = spawn(command, args, { cwd: process.cwd() });
+        const child = spawn(command, args, {
+          cwd: process.cwd(),
+          env: {
+            ...process.env,
+          },
+        });
         let stdout = '';
         let stderr = '';
         child.stdout.on('data', (chunk) => (stdout += chunk.toString()));
@@ -93,4 +99,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error?.message ?? 'Unexpected error.' }, { status: 500 });
   }
 }
-

@@ -28,6 +28,8 @@ export default function Assignment3Page() {
   const [boundaryResult, setBoundaryResult] = useState<{ overlay: string; mask: string } | null>(null);
   const [arucoResults, setArucoResults] = useState<ArucoResult[]>([]);
   const [compareMetrics, setCompareMetrics] = useState<{ dice: number; iou: number } | null>(null);
+  const [samRefPreview, setSamRefPreview] = useState<string | null>(null);
+  const [samCandPreview, setSamCandPreview] = useState<string | null>(null);
 
   const handleGradient = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -159,6 +161,29 @@ export default function Assignment3Page() {
           <div className="text-xs text-slate-400">Status: {status}</div>
         </header>
 
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+          <h2 className="text-lg font-semibold text-emerald-200">Module 3 Demo Video</h2>
+          <div className="mt-3 space-y-2">
+            <iframe
+              className="w-full rounded border border-slate-800"
+              style={{ aspectRatio: '16 / 9', minHeight: '315px' }}
+              src="https://www.youtube.com/embed/dcgSvX3Yomo"
+              title="Module 3 Demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              frameBorder="0"
+            />
+            <a
+              href="https://youtu.be/dcgSvX3Yomo"
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-emerald-200 underline hover:text-emerald-100"
+            >
+              Open video in a new tab
+            </a>
+          </div>
+        </section>
+
         <section className="grid gap-6 md:grid-cols-2">
           <form onSubmit={handleGradient} className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <h2 className="text-lg font-semibold text-emerald-200">1. Gradients &amp; LoG</h2>
@@ -255,16 +280,48 @@ export default function Assignment3Page() {
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2 text-sm">
                 <label className="text-slate-300">Reference mask (SAM2)</label>
-                <input name="samReference" type="file" accept="image/*" className="w-full rounded border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm" />
+                <input
+                  name="samReference"
+                  type="file"
+                  accept="image/*"
+                  className="w-full rounded border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setSamRefPreview(file ? URL.createObjectURL(file) : null);
+                  }}
+                />
               </div>
               <div className="space-y-2 text-sm">
                 <label className="text-slate-300">Our segmentation mask</label>
-                <input name="samCandidate" type="file" accept="image/*" className="w-full rounded border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm" />
+                <input
+                  name="samCandidate"
+                  type="file"
+                  accept="image/*"
+                  className="w-full rounded border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setSamCandPreview(file ? URL.createObjectURL(file) : null);
+                  }}
+                />
               </div>
             </div>
             <button className="rounded border border-rose-500/50 px-4 py-2 text-sm text-rose-100 hover:bg-rose-500/10" type="submit">
               Evaluate Masks
             </button>
+            <div className="grid gap-3 pt-2 text-xs text-slate-300 md:grid-cols-2">
+              {samRefPreview && (
+                <figure className="space-y-1">
+                  <figcaption className="font-semibold text-slate-200">Reference (SAM2)</figcaption>
+                  <img src={samRefPreview} alt="SAM2 reference preview" className="rounded border border-slate-800" />
+                </figure>
+              )}
+              {samCandPreview && (
+                <figure className="space-y-1">
+                  <figcaption className="font-semibold text-slate-200">Our mask</figcaption>
+                  <img src={samCandPreview} alt="Our mask preview" className="rounded border border-slate-800" />
+                </figure>
+              )}
+            </div>
           </form>
           {compareMetrics && (
             <div className="mt-4 rounded border border-slate-800 bg-slate-900/60 p-3 text-sm text-slate-200">

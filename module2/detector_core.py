@@ -620,3 +620,4 @@ def generate_evaluation_report(results: List[DetectionResult]) -> str:
     
     return "\n".join(lines)
 
+

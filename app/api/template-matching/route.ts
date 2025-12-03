@@ -3,8 +3,9 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 
-const UPLOAD_DIR = path.join(process.cwd(), 'module2', 'uploads');
-const OUTPUT_DIR = path.join(process.cwd(), 'module2', 'output');
+const BASE_DIR = process.env.VERCEL ? '/tmp' : process.cwd();
+const UPLOAD_DIR = path.join(BASE_DIR, 'module2', 'uploads');
+const OUTPUT_DIR = path.join(BASE_DIR, 'module2', 'output');
 
 type PythonResult = {
   stdout: string;
@@ -30,7 +31,13 @@ async function spawnPython(args: string[]): Promise<PythonResult> {
   for (const command of candidates) {
     try {
       return await new Promise<PythonResult>((resolve, reject) => {
-        const child = spawn(command, args, { cwd: process.cwd() });
+        const child = spawn(command, args, {
+          cwd: process.cwd(),
+          env: {
+            ...process.env,
+            MODULE2_OUTPUT_DIR: OUTPUT_DIR,
+          },
+        });
         let stdout = '';
         let stderr = '';
 
