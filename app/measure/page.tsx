@@ -82,6 +82,8 @@ export default function Page() {
     img.onload = () => setPhoto(img);
     img.src = url;
     setPoints([]); setPixelDist(null); setResultMM(null);
+    // After capturing, stop the camera so the feed is frozen on the photo.
+    stopCamera();
   };
 
   useEffect(() => {
@@ -138,65 +140,94 @@ export default function Page() {
     <div className="min-h-screen p-6 text-white" style={{background:'#111'}}>
       <h1 className="text-2xl font-semibold mb-4">Real-World Measurement Demo (Live Camera)</h1>
 
-      <div className="mb-3 text-sm opacity-80">Status: {status}</div>
+      <div className="grid gap-6 lg:gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.85fr)]">
+        <div>
+          <div className="mb-3 text-sm opacity-80">Status: {status}</div>
 
-      {!streamActive && (
-        <div className="flex items-center gap-3 mb-4">
-          <button onClick={startCamera} className="border px-4 py-2 rounded">Start Camera</button>
-          <button onClick={manualPlay} className="border px-4 py-2 rounded">Play (if blocked)</button>
-          <button onClick={stopCamera} className="border px-4 py-2 rounded">Stop</button>
-        </div>
-      )}
+          {!streamActive && (
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <button onClick={startCamera} className="border px-4 py-2 rounded">Start Camera</button>
+              <button onClick={manualPlay} className="border px-4 py-2 rounded">Play (if blocked)</button>
+              <button onClick={stopCamera} className="border px-4 py-2 rounded">Stop</button>
+            </div>
+          )}
 
-      {/* Video preview */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        controls            // show play button just in case
-        style={{ width:'640px', maxWidth:'95vw', borderRadius:12, background:'#000', display: stream ? 'block' : 'none' }}
-      />
+          {/* Video preview */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            controls            // show play button just in case
+            style={{ width:'640px', maxWidth:'95vw', borderRadius:12, background:'#000', display: stream ? 'block' : 'none' }}
+          />
 
-      {/* Capture & measure section */}
-      {stream && (
-        <div className="mt-3 flex items-center gap-3">
-          <button onClick={capturePhoto} className="border px-4 py-2 rounded">Capture Photo</button>
-          <button onClick={stopCamera} className="border px-4 py-2 rounded">Stop Camera</button>
-        </div>
-      )}
+          {/* Capture & measure section */}
+          {stream && (
+            <div className="mt-3 flex items-center gap-3">
+              <button onClick={capturePhoto} className="border px-4 py-2 rounded">Capture Photo</button>
+              <button onClick={stopCamera} className="border px-4 py-2 rounded">Stop Camera</button>
+            </div>
+          )}
 
-      <div className="w-full max-w-4xl mt-6">
-        <div className="flex flex-wrap items-end gap-3 mb-3">
-          <div className="flex flex-col">
-            <label className="text-sm">Z (meters)</label>
-            <input className="border border-gray-500 bg-white rounded px-2 py-1 text-black" value={Zmeters} onChange={e=>setZmeters(e.target.value)} />
+          <div className="w-full max-w-4xl mt-6">
+            <div className="flex flex-wrap items-end gap-3 mb-3">
+              <div className="flex flex-col">
+                <label className="text-sm">Z (meters)</label>
+                <input className="border border-gray-500 bg-white rounded px-2 py-1 text-black" value={Zmeters} onChange={e=>setZmeters(e.target.value)} />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm">Focal length f (mm)</label>
+                <input className="border border-gray-500 bg-white rounded px-2 py-1 text-black" value={focalMM} onChange={e=>setFocalMM(e.target.value)} />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm">Sensor width (mm)</label>
+                <input className="border border-gray-500 bg-white rounded px-2 py-1 text-black" value={sensorWidthMM} onChange={e=>setSensorWidthMM(e.target.value)} />
+              </div>
+              <button onClick={compute} className="border rounded px-3 py-2">Compute</button>
+            </div>
+
+            <canvas ref={canvasRef} onClick={onCanvasClick} style={{ width:'100%', borderRadius:10, background:'#000' }} />
+
+            <div className="mt-2 text-sm">
+              Pixel distance: {pixelDist ? pixelDist.toFixed(2) : '-'}
+            </div>
+
+            {resultMM !== null && (
+              <div className="border rounded p-4 text-lg mt-3">
+                <div className="font-semibold mb-1">Estimated real-world size</div>
+                <div>{resultMM.toFixed(2)} mm</div>
+                <div>{(resultMM/10).toFixed(2)} cm</div>
+                <div>{(resultMM/25.4).toFixed(2)} in</div>
+              </div>
+            )}
           </div>
-          <div className="flex flex-col">
-            <label className="text-sm">Focal length f (mm)</label>
-            <input className="border border-gray-500 bg-white rounded px-2 py-1 text-black" value={focalMM} onChange={e=>setFocalMM(e.target.value)} />
-          </div>
-          <div className="flex flex-col">
-            <label className="text-sm">Sensor width (mm)</label>
-            <input className="border border-gray-500 bg-white rounded px-2 py-1 text-black" value={sensorWidthMM} onChange={e=>setSensorWidthMM(e.target.value)} />
-          </div>
-          <button onClick={compute} className="border rounded px-3 py-2">Compute</button>
         </div>
 
-        <canvas ref={canvasRef} onClick={onCanvasClick} style={{ width:'100%', borderRadius:10, background:'#000' }} />
-
-        <div className="mt-2 text-sm">
-          Pixel distance: {pixelDist ? pixelDist.toFixed(2) : '-'}
-        </div>
-
-        {resultMM !== null && (
-          <div className="border rounded p-4 text-lg mt-3">
-            <div className="font-semibold mb-1">Estimated real-world size</div>
-            <div>{resultMM.toFixed(2)} mm</div>
-            <div>{(resultMM/10).toFixed(2)} cm</div>
-            <div>{(resultMM/25.4).toFixed(2)} in</div>
+        <aside className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4 h-fit">
+          <p className="text-sm font-semibold text-slate-100">Recorded walkthrough</p>
+          <div className="w-full overflow-hidden rounded border border-slate-800 bg-black aspect-video">
+            <iframe
+              className="w-full h-full"
+              src="https://www.youtube.com/embed/s_B8JZ-PiSM"
+              title="Module 1 demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
           </div>
-        )}
+          <div className="pt-2 border-t border-slate-800">
+            <p className="text-sm font-semibold text-slate-100">Worksheet (PDF)</p>
+            <a href="/docs/module1_worksheet.pdf" className="text-xs text-blue-300 underline" target="_blank" rel="noreferrer">
+              Open Module 1 worksheet
+            </a>
+            <div className="mt-2 text-xs text-slate-400">
+              GitHub repo:{" "}
+              <a href="https://github.com/daredevilx616/computer_vision" className="text-blue-300 underline" target="_blank" rel="noreferrer">
+                github.com/daredevilx616/computer_vision
+              </a>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   );

@@ -32,6 +32,7 @@ export default function TemplateMatchingPage() {
   const [detections, setDetections] = useState<Detection[]>([]);
   const [threshold, setThreshold] = useState<number | null>(null);
   const [annotatedImage, setAnnotatedImage] = useState<string | null>(null);
+  const [thresholdValue, setThresholdValue] = useState<number>(0.7);
 
   const resetPreview = useCallback(() => {
     if (scenePreview) {
@@ -51,6 +52,29 @@ export default function TemplateMatchingPage() {
     }
   }, [scenePreview]);
 
+  const getColorForLabel = useCallback((label: string, index: number) => {
+    // Define distinct colors for different labels
+    const colorMap: { [key: string]: { stroke: string; fill: string; text: string } } = {
+      heart: { stroke: 'rgba(255, 75, 95, 0.95)', fill: '#ff4b5f', text: '#ffb3bd' },
+      diamond: { stroke: 'rgba(75, 150, 255, 0.95)', fill: '#4b96ff', text: '#b3d7ff' },
+      club: { stroke: 'rgba(150, 255, 75, 0.95)', fill: '#96ff4b', text: '#d7ffb3' },
+      spade: { stroke: 'rgba(180, 100, 255, 0.95)', fill: '#b464ff', text: '#ddb3ff' },
+    };
+
+    // Try to match by label
+    if (colorMap[label]) return colorMap[label];
+
+    // Fallback to index-based colors
+    const fallbackColors = [
+      { stroke: 'rgba(45, 255, 196, 0.95)', fill: '#2dffc4', text: '#8fffd1' },
+      { stroke: 'rgba(255, 196, 45, 0.95)', fill: '#ffc42d', text: '#ffd98f' },
+      { stroke: 'rgba(255, 45, 196, 0.95)', fill: '#ff2dc4', text: '#ff8fd9' },
+      { stroke: 'rgba(196, 45, 255, 0.95)', fill: '#c42dff', text: '#d98fff' },
+    ];
+
+    return fallbackColors[index % fallbackColors.length];
+  }, []);
+
   const drawBlurredDetections = useCallback(
     (imageUrl: string, detectionList: Detection[]) => {
       const img = new Image();
@@ -65,10 +89,12 @@ export default function TemplateMatchingPage() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        detectionList.forEach((det) => {
+        detectionList.forEach((det, index) => {
           const { left, top, right, bottom } = det.box;
           const width = right - left;
           const height = bottom - top;
+          const colors = getColorForLabel(det.label, index);
+
           ctx.save();
           ctx.beginPath();
           ctx.rect(left, top, width, height);
@@ -78,12 +104,12 @@ export default function TemplateMatchingPage() {
           ctx.restore();
 
           ctx.save();
-          ctx.strokeStyle = 'rgba(45, 255, 196, 0.95)';
+          ctx.strokeStyle = colors.stroke;
           ctx.lineWidth = 3;
           ctx.strokeRect(left, top, width, height);
           ctx.fillStyle = 'rgba(12, 12, 12, 0.7)';
           ctx.fillRect(left, Math.max(0, top - 20), width, 20);
-          ctx.fillStyle = '#8fffd1';
+          ctx.fillStyle = colors.text;
           ctx.font = '14px "Segoe UI", sans-serif';
           const label = `${det.label} ${(det.confidence * 100).toFixed(1)}%`;
           ctx.fillText(label, left + 6, Math.max(14, top - 6));
@@ -92,7 +118,7 @@ export default function TemplateMatchingPage() {
       };
       img.src = imageUrl;
     },
-    [],
+    [getColorForLabel],
   );
 
   const handleFileChange = useCallback(
@@ -139,6 +165,7 @@ export default function TemplateMatchingPage() {
     try {
       const formData = new FormData();
       formData.append('scene', sceneFile);
+      formData.append('threshold', thresholdValue.toString());
       const response = await fetch('/api/template-matching', {
         method: 'POST',
         body: formData,
@@ -165,7 +192,7 @@ export default function TemplateMatchingPage() {
       setStatus('error');
       setMessage(error?.message ?? 'Something went wrong while processing.');
     }
-  }, [sceneFile, scenePreview, drawBlurredDetections]);
+  }, [sceneFile, scenePreview, drawBlurredDetections, thresholdValue]);
 
   const statusMessage = useMemo(() => {
     return message;
@@ -177,8 +204,9 @@ export default function TemplateMatchingPage() {
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold tracking-tight">Module 2 &mdash; Template Matching Sandbox</h1>
           <p className="text-sm text-slate-300">
-            Upload a scene, run the OpenCV correlation pipeline, and preview the blurred detections. The backend calls
-            into the Python scripts in <code>module2/</code> so the web app now reflects the same results as the CLI.
+            Upload a scene image to detect ALL available templates (hearts, diamonds, clubs, spades, logos, etc.).
+            The system runs multi-scale template matching and highlights all detected objects with unique colors.
+            The backend uses OpenCV correlation and calls Python scripts in <code>module2/</code>.
           </p>
         </header>
 
@@ -192,6 +220,26 @@ export default function TemplateMatchingPage() {
               onChange={handleFileChange}
               className="w-full cursor-pointer rounded border border-slate-600 bg-slate-800 px-3 py-2 text-sm file:mr-4 file:rounded file:border-0 file:bg-slate-700 file:px-4 file:py-2"
             />
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Detection Threshold: {thresholdValue.toFixed(2)} ({(thresholdValue * 100).toFixed(0)}%)
+                </label>
+                <input
+                  type="range"
+                  min="0.3"
+                  max="0.95"
+                  step="0.05"
+                  value={thresholdValue}
+                  onChange={(e) => setThresholdValue(parseFloat(e.target.value))}
+                  className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                />
+                <div className="flex justify-between text-xs text-slate-500 mt-1">
+                  <span>0.3 (More, may have false positives)</span>
+                  <span>0.95 (Only very confident matches)</span>
+                </div>
+              </div>
+            </div>
             <div className="flex gap-2 text-xs">
               <button
                 onClick={handleProcessClick}
@@ -230,17 +278,29 @@ export default function TemplateMatchingPage() {
             )}
             {detections.length > 0 && (
               <ul className="space-y-3 text-sm">
-                {detections.map((item) => (
-                  <li key={`${item.label}-${item.box.left}-${item.box.top}`} className="rounded border border-emerald-400/30 bg-emerald-400/10 p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-emerald-200">{item.label}</span>
-                      <span>{(item.confidence * 100).toFixed(1)}%</span>
-                    </div>
-                    <div className="text-xs text-emerald-200/80">
-                      Box: {item.box.left}, {item.box.top} &rarr; {item.box.right}, {item.box.bottom}
-                    </div>
-                  </li>
-                ))}
+                {detections.map((item, index) => {
+                  const colors = getColorForLabel(item.label, index);
+                  return (
+                    <li
+                      key={`${item.label}-${item.box.left}-${item.box.top}`}
+                      className="rounded border p-3"
+                      style={{
+                        borderColor: colors.stroke.replace('0.95', '0.3'),
+                        backgroundColor: colors.stroke.replace('0.95', '0.1'),
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold" style={{ color: colors.text }}>
+                          {item.label}
+                        </span>
+                        <span>{(item.confidence * 100).toFixed(1)}%</span>
+                      </div>
+                      <div className="text-xs opacity-80">
+                        Box: {item.box.left}, {item.box.top} &rarr; {item.box.right}, {item.box.bottom}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
             {annotatedImage && (
@@ -256,13 +316,30 @@ export default function TemplateMatchingPage() {
         </section>
 
         <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-5">
-          <h2 className="text-lg font-medium">Build Checklist</h2>
+          <h2 className="text-lg font-medium">Demo Video</h2>
+          <p className="text-sm text-slate-300 mb-3">
+            Quick walkthrough of uploading scenes, adjusting threshold, detecting objects, and blurring detected regions.
+          </p>
+          <div className="w-full overflow-hidden rounded-xl border border-slate-700 bg-black aspect-video">
+            <iframe
+              className="w-full h-full"
+              src="https://www.youtube.com/embed/sfWhuLJTlMk"
+              title="Module 2 template demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-5">
+          <h2 className="text-lg font-medium">Features</h2>
           <ul className="mt-3 space-y-2 text-sm text-slate-300">
-            <li>✓ Synthetic dataset + CLI pipeline (`python -m module2.run_template_matching`).</li>
-            <li>✓ Fourier blur/deblur experiment (`python -m module2.fourier_deblur`).</li>
+            <li>✓ Multi-template detection - detects ALL available templates in a single scene.</li>
+            <li>✓ Multi-scale matching - finds objects at different sizes automatically.</li>
+            <li>✓ Unique color coding - each object type has its own distinctive color.</li>
             <li>✓ API endpoint powering this UI (`POST /api/template-matching`).</li>
-            <li>✓ Browser-side blur overlay based on detection boxes.</li>
-            <li>⏳ Add user controls (e.g., adjustable threshold, download results).</li>
+            <li>✓ Browser-side blur overlay with bounding boxes for each detection.</li>
+            <li>✓ Confidence scores and precise bounding box coordinates displayed.</li>
           </ul>
         </section>
       </div>

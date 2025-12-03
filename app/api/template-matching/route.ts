@@ -72,6 +72,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing scene file upload.' }, { status: 400 });
     }
 
+    // Get threshold from form data, default to 0.7
+    const thresholdStr = formData.get('threshold');
+    const threshold = thresholdStr ? parseFloat(thresholdStr.toString()) : 0.7;
+
     const fileName = typeof (file as any).name === 'string' ? (file as any).name : 'scene.png';
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -80,13 +84,20 @@ export async function POST(request: Request) {
     const savedPath = path.join(UPLOAD_DIR, uniqueName);
     await fs.writeFile(savedPath, buffer);
 
-    const args = [
-      '-m',
-      'module2.run_template_matching',
-      '--scene',
-      savedPath,
-      '--json',
-    ];
+    // Optional label filter (comma or space separated)
+    const onlyRaw = formData.get('only');
+    const onlyLabels =
+      typeof onlyRaw === 'string'
+        ? onlyRaw
+            .split(/[,\s]+/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+
+    const args = ['-m', 'module2.run_template_matching', '--scene', savedPath, '--threshold', threshold.toString(), '--json'];
+    if (onlyLabels.length) {
+      args.push('--only', ...onlyLabels);
+    }
 
     const { stdout } = await spawnPython(args);
     const parsed = JSON.parse(stdout);

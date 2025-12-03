@@ -30,7 +30,13 @@ async function spawnPython(args: string[]): Promise<PythonResult> {
   for (const command of candidates) {
     try {
       return await new Promise<PythonResult>((resolve, reject) => {
-        const child = spawn(command, args, { cwd: process.cwd() });
+        const child = spawn(command, args, {
+          cwd: process.cwd(),
+          env: {
+            ...process.env,
+            PYTHONPATH: [process.cwd(), process.env.PYTHONPATH].filter(Boolean).join(path.delimiter),
+          },
+        });
         let stdout = '';
         let stderr = '';
 
@@ -132,4 +138,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

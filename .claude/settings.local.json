@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m detector:*)",
+      "Bash(python module2/detector.py:*)",
+      "Bash(python -c \"import sys; sys.path.insert(0, ''module2''); from detector import detect_scene; print(''detector module loaded'')\")",
+      "Bash(python test_templates.py:*)",
+      "Bash(python assignment2_simple_matcher.py:*)",
+      "Bash(python assignment2_matcher.py:*)",
+      "Bash(python:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,3 +1,12 @@
+"""
+Module 3 CLI entrypoint.
+Usage examples:
+  python -m module3.cli gradients --image path.png
+  python -m module3.cli keypoints --image path.png --mode edge
+  python -m module3.cli aruco --image path.png --dictionary DICT_5X5_100
+All commands emit JSON to stdout for downstream use.
+"""
+
 from __future__ import annotations
 
 import argparse

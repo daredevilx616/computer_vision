@@ -1,3 +1,10 @@
+"""
+Module 7 stereo utilities.
+Usage (CLI-style import safe): import stereo_measurement or call functions in API routes.
+Inputs: left/right images, polygon vertices, focal length (mm), sensor width (mm), baseline (mm).
+Outputs: disparity data URL, vertex depths, segment lengths, and mean length in mm.
+"""
+
 from __future__ import annotations
 
 import base64
@@ -123,4 +130,3 @@ def stereo_measurement(
         "mean_length_mm": float(np.mean(valid_lengths)) if valid_lengths else float("nan"),
     }
     return summary
-

@@ -1,3 +1,11 @@
+"""
+Module 4 CLI for SIFT and panorama stitching.
+Usage:
+  python -m module4.cli sift --image-a left.png --image-b right.png
+  python -m module4.cli stitch --images img1.png img2.png img3.png
+Emits JSON with match stats or panorama paths; images saved under module4/output.
+"""
+
 from __future__ import annotations
 
 import argparse

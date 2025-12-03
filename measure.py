@@ -1,4 +1,8 @@
-# measure.py
+"""
+Module 1 measurement helpers.
+How to run the demo app: launch the web UI (or run `python measure.py` as a utility) to capture a frame, click two points,
+and compute real-world distance using Z (m), focal length (mm), and sensor width (mm).
+"""
 def compute_focal_pixels(known_real_width, known_distance, measured_pixel_width):
     """
     Compute focal length in pixels:

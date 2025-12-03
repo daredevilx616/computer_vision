@@ -26,6 +26,7 @@
 module2/uploads/*
 !module2/uploads/.gitkeep
 module2/output/*
+module2/output/template_matching_results.json
 !module2/output/.gitkeep
 module3/uploads/*
 !module3/uploads/.gitkeep
@@ -39,7 +40,10 @@ module7/uploads/*
 !module7/uploads/.gitkeep
 module7/output/*
 !module7/output/.gitkeep
-
+module2/__pycache__
+module3/__pycache__
+module4/__pycache__
+module7/__pycache__
 # debug
 npm-debug.log*
 yarn-debug.log*
