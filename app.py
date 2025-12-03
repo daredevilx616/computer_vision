@@ -8,23 +8,9 @@ from module2.fourier_deblur import process_image as fourier_process
 
 app = Flask(__name__)
 
-# Webcam capture
-cap = cv2.VideoCapture(0)
-
 # Calibration and measurement storage
 CALIBRATION = {"focal_length_pixels": None, "units": "cm"}
 LAST_MEASUREMENT = {}
-
-def gen_frames():
-    """Generator for webcam frames"""
-    while True:
-        success, frame = cap.read()
-        if not success:
-            continue
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame_bytes = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
 @app.route("/")
 def index():
@@ -32,7 +18,7 @@ def index():
 
 @app.route("/video_feed")
 def video_feed():
-    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response("Camera not available", status=503)
 
 @app.route("/calibrate", methods=["POST"])
 def calibrate():
