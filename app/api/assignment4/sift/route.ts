@@ -86,11 +86,20 @@ export async function POST(request: Request) {
     const { stdout } = await spawnPython(args);
     const payload = JSON.parse(stdout);
 
+    // Convert custom SIFT visual path to data URL
     if (payload.visual_path) {
       const absolute = path.isAbsolute(payload.visual_path)
         ? payload.visual_path
         : path.join(process.cwd(), 'module4', payload.visual_path);
       payload.visual = await fileToDataUrl(absolute);
+    }
+
+    // Convert OpenCV SIFT visual path to data URL
+    if (payload.cv_visual_path) {
+      const absolute = path.isAbsolute(payload.cv_visual_path)
+        ? payload.cv_visual_path
+        : path.join(process.cwd(), 'module4', payload.cv_visual_path);
+      payload.cv_visual = await fileToDataUrl(absolute);
     }
 
     return NextResponse.json(payload);

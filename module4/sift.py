@@ -70,7 +70,8 @@ def dog_pyramid(gaussian: List[List[np.ndarray]]) -> List[List[np.ndarray]]:
     return dogs
 
 
-def detect_keypoints(gaussian: List[List[np.ndarray]], dogs: List[List[np.ndarray]], contrast_threshold: float = 0.03) -> List[KeyPoint]:
+def detect_keypoints(gaussian: List[List[np.ndarray]], dogs: List[List[np.ndarray]], contrast_threshold: float = 0.015, edge_threshold: float = 10.0) -> List[KeyPoint]:
+    """Detect keypoints with contrast and edge response filtering."""
     keypoints: List[KeyPoint] = []
     for octave_idx, octave_dogs in enumerate(dogs):
         for layer in range(1, len(octave_dogs) - 1):
@@ -81,8 +82,11 @@ def detect_keypoints(gaussian: List[List[np.ndarray]], dogs: List[List[np.ndarra
             for y in range(1, h - 1):
                 for x in range(1, w - 1):
                     val = curr_img[y, x]
+                    # Lower contrast threshold to detect more keypoints
                     if abs(val) < contrast_threshold:
                         continue
+
+                    # Check if local extremum
                     patch = np.concatenate(
                         [
                             prev_img[y - 1 : y + 2, x - 1 : x + 2].ravel(),
@@ -98,6 +102,21 @@ def detect_keypoints(gaussian: List[List[np.ndarray]], dogs: List[List[np.ndarra
                         is_extremum = False
 
                     if not is_extremum:
+                        continue
+
+                    # Edge response filtering (remove keypoints on edges)
+                    dxx = curr_img[y, x + 1] + curr_img[y, x - 1] - 2 * curr_img[y, x]
+                    dyy = curr_img[y + 1, x] + curr_img[y - 1, x] - 2 * curr_img[y, x]
+                    dxy = (curr_img[y + 1, x + 1] - curr_img[y + 1, x - 1] - curr_img[y - 1, x + 1] + curr_img[y - 1, x - 1]) / 4.0
+
+                    trace = dxx + dyy
+                    det = dxx * dyy - dxy * dxy
+
+                    if det <= 0:
+                        continue
+
+                    # Edge threshold check: reject keypoints with large principal curvature ratio
+                    if (trace * trace) / det > ((edge_threshold + 1) ** 2) / edge_threshold:
                         continue
 
                     scale = 2 ** octave_idx
@@ -124,34 +143,92 @@ def _gradient_at(image: np.ndarray, x: int, y: int) -> Tuple[float, float]:
 
 
 def assign_orientations(gaussian: List[List[np.ndarray]], keypoints: List[KeyPoint]) -> None:
+    """Assign dominant orientations to keypoints with Gaussian weighting."""
     for kp in keypoints:
         layer_img = gaussian[kp.octave][kp.layer]
         scale = 2 ** kp.octave
         x = int(round(kp.pt[0] / scale))
         y = int(round(kp.pt[1] / scale))
-        region = layer_img[max(0, y - 8) : y + 9, max(0, x - 8) : x + 9]
+
+        # Extract region around keypoint
+        y_start = max(0, y - 8)
+        y_end = min(layer_img.shape[0], y + 9)
+        x_start = max(0, x - 8)
+        x_end = min(layer_img.shape[1], x + 9)
+
+        region = layer_img[y_start:y_end, x_start:x_end]
         if region.size == 0:
             continue
+
+        # Compute gradients
         gy, gx = np.gradient(region)
         magnitude = np.sqrt(gx**2 + gy**2)
         orientation = (np.degrees(np.arctan2(gy, gx)) + 360.0) % 360.0
-        hist, _ = np.histogram(orientation, bins=36, range=(0, 360), weights=magnitude)
-        kp.angle = float((np.argmax(hist) * 360) / 36)
+
+        # Apply Gaussian weighting (sigma = 1.5 * scale of keypoint)
+        sigma = 1.5 * kp.size
+        h, w = region.shape
+        gauss_weight = np.zeros_like(magnitude)
+        for i in range(h):
+            for j in range(w):
+                dy = i - (h // 2)
+                dx = j - (w // 2)
+                gauss_weight[i, j] = np.exp(-(dx**2 + dy**2) / (2 * sigma**2))
+
+        weighted_magnitude = magnitude * gauss_weight
+
+        # Build orientation histogram
+        hist, _ = np.histogram(orientation, bins=36, range=(0, 360), weights=weighted_magnitude)
+
+        # Smooth histogram
+        hist = np.convolve(np.concatenate([hist[-2:], hist, hist[:2]]), [1, 1, 1], mode='valid') / 3.0
+
+        # Find dominant orientation
+        peak_idx = np.argmax(hist)
+        kp.angle = float((peak_idx * 360) / 36)
 
 
 def compute_descriptors(gaussian: List[List[np.ndarray]], keypoints: List[KeyPoint]) -> np.ndarray:
+    """Compute SIFT descriptors with Gaussian weighting and improved normalization."""
     descriptors: List[np.ndarray] = []
+
+    # Create Gaussian weight window (16x16)
+    gaussian_window = np.zeros((16, 16), dtype=np.float32)
+    for i in range(16):
+        for j in range(16):
+            gaussian_window[i, j] = np.exp(-((i - 7.5) ** 2 + (j - 7.5) ** 2) / (2 * (8.0) ** 2))
+
     for kp in keypoints:
         layer_img = gaussian[kp.octave][kp.layer]
         scale = 2 ** kp.octave
         x = int(round(kp.pt[0] / scale))
         y = int(round(kp.pt[1] / scale))
-        patch = layer_img[max(0, y - 8) : y + 8, max(0, x - 8) : x + 8]
-        if patch.shape[0] < 16 or patch.shape[1] < 16:
+
+        # Extract 16x16 patch around keypoint
+        y_start = max(0, y - 8)
+        y_end = min(layer_img.shape[0], y + 8)
+        x_start = max(0, x - 8)
+        x_end = min(layer_img.shape[1], x + 8)
+
+        patch = layer_img[y_start:y_end, x_start:x_end]
+
+        # Skip if patch is too small
+        if patch.shape[0] < 10 or patch.shape[1] < 10:
             continue
+
+        # Resize to 16x16 if needed
+        if patch.shape != (16, 16):
+            patch = cv2.resize(patch, (16, 16), interpolation=cv2.INTER_LINEAR)
+
+        # Compute gradients
         gy, gx = np.gradient(patch)
         magnitude = np.sqrt(gx**2 + gy**2)
         orientation = (np.degrees(np.arctan2(gy, gx)) - kp.angle + 360.0) % 360.0
+
+        # Apply Gaussian weighting
+        magnitude = magnitude * gaussian_window
+
+        # Build descriptor: 4x4 grid of 8-bin histograms
         descriptor = []
         for i in range(4):
             for j in range(4):
@@ -159,11 +236,22 @@ def compute_descriptors(gaussian: List[List[np.ndarray]], keypoints: List[KeyPoi
                 cell_ori = orientation[i * 4 : (i + 1) * 4, j * 4 : (j + 1) * 4].ravel()
                 hist, _ = np.histogram(cell_ori, bins=8, range=(0, 360), weights=cell_mag)
                 descriptor.extend(hist)
+
         descriptor = np.array(descriptor, dtype=np.float32)
+
+        # Normalize
         norm = np.linalg.norm(descriptor)
         if norm > 1e-6:
             descriptor = descriptor / norm
+
+        # Clip values to 0.2 and renormalize (improves robustness to illumination)
+        descriptor = np.clip(descriptor, 0, 0.2)
+        norm = np.linalg.norm(descriptor)
+        if norm > 1e-6:
+            descriptor = descriptor / norm
+
         descriptors.append(descriptor)
+
     if not descriptors:
         return np.zeros((0, 128), dtype=np.float32)
     return np.vstack(descriptors)
@@ -222,6 +310,7 @@ def ransac_homography(matches: Sequence[Tuple[int, int, float]], kp1: Sequence[K
 
 
 def draw_matches(image_a: np.ndarray, image_b: np.ndarray, kp_a: Sequence[KeyPoint], kp_b: Sequence[KeyPoint], matches: Sequence[Tuple[int, int, float]], inliers: Sequence[int]) -> np.ndarray:
+    """Draw only inlier matches in green; omit outliers for clarity."""
     h = max(image_a.shape[0], image_b.shape[0])
     w = image_a.shape[1] + image_b.shape[1]
     canvas = np.zeros((h, w, 3), dtype=np.uint8)
@@ -230,12 +319,12 @@ def draw_matches(image_a: np.ndarray, image_b: np.ndarray, kp_a: Sequence[KeyPoi
 
     offset = image_a.shape[1]
     inlier_set = set(inliers)
-    for idx, (i, j, _) in enumerate(matches):
+    for idx in inlier_set:
+        i, j, _ = matches[idx]
         pt1 = tuple(map(int, kp_a[i].pt))
         pt2 = (int(kp_b[j].pt[0] + offset), int(kp_b[j].pt[1]))
-        color = (0, 255, 0) if idx in inlier_set else (0, 0, 255)
+        color = (0, 255, 0)
         cv2.line(canvas, pt1, pt2, color, 1, cv2.LINE_AA)
         cv2.circle(canvas, pt1, 3, color, -1)
         cv2.circle(canvas, pt2, 3, color, -1)
     return canvas
-

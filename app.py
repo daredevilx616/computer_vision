@@ -239,9 +239,10 @@ def api_sift():
     if not file_a or not file_b:
         return jsonify({"error": "Two image uploads are required."}), 400
 
-    base_tmp = Path(os.getenv("MODULE4_BASE_DIR", "/tmp/module4"))
-    uploads_dir = base_tmp / "uploads"
-    output_dir = base_tmp / "output"
+    # Use module4 directory in project root (works on Windows and Linux)
+    base_dir = Path(__file__).resolve().parent / "module4"
+    uploads_dir = base_dir / "uploads"
+    output_dir = base_dir / "output"
     uploads_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -270,23 +271,48 @@ def api_sift():
         # OpenCV SIFT + BF matcher for comparison (robust even if no good matches)
         cv_match_count = 0
         cv_visual = _side_by_side(img_a, img_b)
+        cv_error = None
         try:
             sift_cv = cv2.SIFT_create()
             kpa, des_a_cv = sift_cv.detectAndCompute(cv2.cvtColor(img_a, cv2.COLOR_BGR2GRAY), None)
             kpb, des_b_cv = sift_cv.detectAndCompute(cv2.cvtColor(img_b, cv2.COLOR_BGR2GRAY), None)
-            bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-            raw_matches = bf.knnMatch(des_a_cv, des_b_cv, k=2) if des_a_cv is not None and des_b_cv is not None else []
-            good = []
-            for m_n in raw_matches:
-                if len(m_n) < 2:
-                    continue
-                m, n = m_n
-                if m.distance < 0.75 * n.distance:
-                    good.append(m)
-            cv_match_count = len(good)
-            if good:
-                cv_visual = cv2.drawMatches(img_a, kpa, img_b, kpb, good, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-        except Exception:
+
+            print(f"[OpenCV SIFT] Detected keypoints: A={len(kpa)}, B={len(kpb)}")
+            print(f"[OpenCV SIFT] Descriptors: A={des_a_cv.shape if des_a_cv is not None else None}, B={des_b_cv.shape if des_b_cv is not None else None}")
+
+            if des_a_cv is not None and des_b_cv is not None and len(des_a_cv) > 0 and len(des_b_cv) > 0:
+                bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
+                raw_matches = bf.knnMatch(des_a_cv, des_b_cv, k=2)
+                print(f"[OpenCV SIFT] Raw matches: {len(raw_matches)}")
+
+                good = []
+                for m_n in raw_matches:
+                    if len(m_n) >= 2:
+                        m, n = m_n
+                        if m.distance < 0.75 * n.distance:
+                            good.append(m)
+
+                cv_match_count = len(good)
+                print(f"[OpenCV SIFT] Good matches after ratio test: {cv_match_count}")
+
+                if good:
+                    cv_visual = cv2.drawMatches(
+                        img_a, kpa, img_b, kpb, good, None,
+                        matchColor=(0, 255, 0),
+                        singlePointColor=(255, 0, 0),
+                        flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
+                    )
+                    print("[OpenCV SIFT] Successfully drew matches")
+                else:
+                    print("[OpenCV SIFT] No good matches found after ratio test")
+            else:
+                print("[OpenCV SIFT] No descriptors computed")
+
+        except Exception as e:
+            cv_error = str(e)
+            print(f"[OpenCV SIFT] Error: {cv_error}")
+            import traceback
+            traceback.print_exc()
             cv_match_count = 0
             cv_visual = _side_by_side(img_a, img_b)
 
@@ -297,6 +323,7 @@ def api_sift():
             "visual": _to_data_url(visual),
             "cv_match_count": cv_match_count,
             "cv_visual": _to_data_url(cv_visual),
+            "cv_error": cv_error,
         }
         return jsonify(payload)
     except Exception as e:
@@ -309,9 +336,10 @@ def api_stitch():
     if len(images) < 2:
         return jsonify({"error": "Upload at least two images for stitching."}), 400
 
-    base_tmp = Path(os.getenv("MODULE4_BASE_DIR", "/tmp/module4"))
-    uploads_dir = base_tmp / "uploads"
-    output_dir = base_tmp / "output"
+    # Use module4 directory in project root (works on Windows and Linux)
+    base_dir = Path(__file__).resolve().parent / "module4"
+    uploads_dir = base_dir / "uploads"
+    output_dir = base_dir / "output"
     uploads_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
 

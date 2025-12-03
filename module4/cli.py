@@ -41,6 +41,8 @@ def main(argv: list[str] | None = None) -> None:
         img_b = cv2.imread(str(args.image_b))
         if img_a is None or img_b is None:
             raise FileNotFoundError("Unable to read input images.")
+
+        # Custom SIFT
         sift_a = sift.sift(img_a)
         sift_b = sift.sift(img_b)
         matches = sift.match_descriptors(sift_a.descriptors, sift_b.descriptors)
@@ -48,11 +50,49 @@ def main(argv: list[str] | None = None) -> None:
         visual = sift.draw_matches(img_a, img_b, sift_a.keypoints, sift_b.keypoints, matches, inliers)
         output_path = stitcher.OUTPUT_DIR / "sift_matches.png"
         cv2.imwrite(str(output_path), visual)
+
+        # OpenCV SIFT for comparison
+        cv_match_count = 0
+        cv_visual_path = None
+        try:
+            sift_cv = cv2.SIFT_create()
+            gray_a = cv2.cvtColor(img_a, cv2.COLOR_BGR2GRAY)
+            gray_b = cv2.cvtColor(img_b, cv2.COLOR_BGR2GRAY)
+            kpa, des_a = sift_cv.detectAndCompute(gray_a, None)
+            kpb, des_b = sift_cv.detectAndCompute(gray_b, None)
+
+            if des_a is not None and des_b is not None and len(des_a) > 0 and len(des_b) > 0:
+                bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
+                raw_matches = bf.knnMatch(des_a, des_b, k=2)
+
+                good = []
+                for m_n in raw_matches:
+                    if len(m_n) >= 2:
+                        m, n = m_n
+                        if m.distance < 0.75 * n.distance:
+                            good.append(m)
+
+                cv_match_count = len(good)
+
+                if good:
+                    cv_visual = cv2.drawMatches(
+                        img_a, kpa, img_b, kpb, good, None,
+                        matchColor=(0, 255, 0),
+                        singlePointColor=(255, 0, 0),
+                        flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
+                    )
+                    cv_visual_path = stitcher.OUTPUT_DIR / "opencv_sift_matches.png"
+                    cv2.imwrite(str(cv_visual_path), cv_visual)
+        except Exception:
+            pass
+
         payload = {
             "match_count": len(matches),
             "inliers": len(inliers),
             "homography": H.tolist(),
-            "visual_path": str(output_path.relative_to(sift.BASE_DIR)),
+            "visual_path": str(output_path),
+            "cv_match_count": cv_match_count,
+            "cv_visual_path": str(cv_visual_path) if cv_visual_path else None,
         }
         json.dump(payload, sys.stdout)
     elif args.command == "stitch":
