@@ -17,6 +17,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source
 COPY . .
 
-# Default to gunicorn serving the Flask app (app.py)
+# Default to gunicorn serving the Flask app (app.py); allow Render/Railway PORT env
 ENV PORT=8000
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:${PORT}"]
+CMD ["/bin/sh", "-c", "gunicorn app:app --bind 0.0.0.0:${PORT:-8000}"]
