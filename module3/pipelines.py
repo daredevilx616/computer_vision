@@ -66,9 +66,9 @@ def compute_gradients(image: np.ndarray) -> Dict[str, str]:
         "magnitude": _to_data_url(mag_img),
         "orientation": _to_data_url(angle_color),
         "log": _to_data_url(log_norm),
-        "magnitude_path": str(mag_path.relative_to(BASE_DIR)),
-        "orientation_path": str(angle_path.relative_to(BASE_DIR)),
-        "log_path": str(log_path.relative_to(BASE_DIR)),
+        "magnitude_path": str(mag_path),
+        "orientation_path": str(angle_path),
+        "log_path": str(log_path),
     }
 
 
@@ -174,7 +174,7 @@ def detect_keypoints(image: np.ndarray, mode: str = "edge") -> Dict[str, str]:
     path = _write_image(blended, f"module3_keypoints_{mode}")
     return {
         "overlay": _to_data_url(blended),
-        "overlay_path": str(path.relative_to(BASE_DIR)),
+        "overlay_path": str(path),
     }
 
 
@@ -198,8 +198,8 @@ def segment_boundary(image: np.ndarray) -> Dict[str, str]:
     return {
         "overlay": _to_data_url(blended),
         "mask": _to_data_url(mask),
-        "overlay_path": str(contour_path.relative_to(BASE_DIR)),
-        "mask_path": str(mask_path.relative_to(BASE_DIR)),
+        "overlay_path": str(contour_path),
+        "mask_path": str(mask_path),
     }
 
 
@@ -415,9 +415,9 @@ def aruco_segment(image: np.ndarray, dictionary_name: str = "DICT_5X5_100") -> D
         "overlay": _to_data_url(blended),
         "mask": _to_data_url(mask),
         "edges": _to_data_url(combined_edges),
-        "overlay_path": str(overlay_path.relative_to(BASE_DIR)),
-        "mask_path": str(mask_path.relative_to(BASE_DIR)),
-        "edges_path": str(edges_path.relative_to(BASE_DIR)),
+        "overlay_path": str(overlay_path),
+        "mask_path": str(mask_path),
+        "edges_path": str(edges_path),
         "marker_count": len(ids),
         "dictionary": dictionary_name,
     }

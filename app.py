@@ -105,14 +105,14 @@ def api_fourier():
     try:
         result = fourier_process(save_path, out_dir)
         payload = {
-            "psnr_blur": result["psnr_blur"],
-            "psnr_restore": result["psnr_restore"],
-            "blur_path": str(result["blur_path"]),
-            "restore_path": str(result["restore_path"]),
-            "montage_path": str(result["montage_path"]),
-            "blur_image": _to_data_url(cv2.imread(result["blur_path"])),
-            "restore_image": _to_data_url(cv2.imread(result["restore_path"])),
-            "montage_image": _to_data_url(cv2.imread(result["montage_path"])),
+            "psnrBlur": result["psnr_blur"],
+            "psnrRestore": result["psnr_restore"],
+            "blurPath": str(result["blur_path"]),
+            "restorePath": str(result["restore_path"]),
+            "montagePath": str(result["montage_path"]),
+            "blurImage": _to_data_url(cv2.imread(result["blur_path"])),
+            "restoredImage": _to_data_url(cv2.imread(result["restore_path"])),
+            "montageImage": _to_data_url(cv2.imread(result["montage_path"])),
         }
         resp = jsonify(payload)
     except Exception as e:
