@@ -66,7 +66,8 @@ export default function FourierLabPage() {
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const response = await fetch('/api/fourier', {
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+      const response = await fetch(`${API_BASE}/api/fourier`, {
         method: 'POST',
         body: formData,
       });

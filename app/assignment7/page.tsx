@@ -124,7 +124,8 @@ export default function Assignment7Page() {
     fd.append('polygon', JSON.stringify(dataVertices));
     setStereoStatus('Running stereo reconstruction...');
     try {
-      const response = await fetch('/api/assignment7/stereo', {
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+      const response = await fetch(`${API_BASE}/api/assignment7/stereo`, {
         method: 'POST',
         body: fd,
       });

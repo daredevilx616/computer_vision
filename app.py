@@ -1,5 +1,10 @@
 from flask import Flask, render_template, Response, request, jsonify
 import cv2
+import base64
+import os
+from pathlib import Path
+
+from module2.fourier_deblur import process_image as fourier_process
 
 app = Flask(__name__)
 
@@ -62,6 +67,52 @@ def measure():
     except Exception as e:
         print("Measurement error:", e)
         return jsonify({"status":"error", "message": str(e)}), 400
+
+@app.route("/api/fourier", methods=["POST"])
+def api_fourier():
+    """Fourier blur/deblur pipeline for Module 2 (backend endpoint)."""
+    if "image" not in request.files:
+        return jsonify({"error": "Missing image upload."}), 400
+
+    up = request.files["image"]
+    if up.filename == "":
+        return jsonify({"error": "Empty filename."}), 400
+
+    # Use /tmp by default in hosted environments
+    base_tmp = Path(os.getenv("MODULE2_OUTPUT_DIR", "/tmp/module2_output"))
+    uploads_dir = base_tmp / "uploads"
+    out_dir = base_tmp / "fourier"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    save_path = uploads_dir / up.filename
+    up.save(save_path)
+
+    try:
+        result = fourier_process(save_path, out_dir)
+        def to_data_url(p: str) -> str:
+            with open(p, "rb") as fh:
+                b64 = base64.b64encode(fh.read()).decode("ascii")
+            return f"data:image/png;base64,{b64}"
+
+        payload = {
+            "psnr_blur": result["psnr_blur"],
+            "psnr_restore": result["psnr_restore"],
+            "blur_path": str(result["blur_path"]),
+            "restore_path": str(result["restore_path"]),
+            "montage_path": str(result["montage_path"]),
+            "blur_image": to_data_url(result["blur_path"]),
+            "restore_image": to_data_url(result["restore_path"]),
+            "montage_image": to_data_url(result["montage_path"]),
+        }
+        resp = jsonify(payload)
+    except Exception as e:
+        resp = jsonify({"error": str(e)})
+        resp.status_code = 500
+
+    # Allow cross-origin for the frontend domain
+    resp.headers.add("Access-Control-Allow-Origin", "*")
+    return resp
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=8000, debug=True)

@@ -2,8 +2,10 @@
 
 import React, { useCallback, useState } from 'react';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+
 async function postAssignment3(formData: FormData) {
-  const response = await fetch('/api/assignment3', {
+  const response = await fetch(`${API_BASE}/api/assignment3`, {
     method: 'POST',
     body: formData,
   });

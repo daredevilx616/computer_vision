@@ -166,7 +166,8 @@ export default function TemplateMatchingPage() {
       const formData = new FormData();
       formData.append('scene', sceneFile);
       formData.append('threshold', thresholdValue.toString());
-      const response = await fetch('/api/template-matching', {
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+      const response = await fetch(`${API_BASE}/api/template-matching`, {
         method: 'POST',
         body: formData,
       });
