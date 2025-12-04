@@ -8,6 +8,7 @@ import numpy as np
 from module2.fourier_deblur import process_image as fourier_process
 from module2 import run_template_matching as tm
 from module56.tracking import detect_aruco_backend, markerless_step_backend
+from module7.stereo import load_image as stereo_load_image, stereo_measurement
 
 app = Flask(__name__)
 
@@ -438,6 +439,55 @@ def api_assignment56_markerless():
         return jsonify(result)
     except Exception as exc:
         return jsonify({"error": str(exc)}), 400
+
+
+# ---------------- Module 7: Stereo size estimation -----------------
+@app.route("/api/assignment7/stereo", methods=["POST"])
+def api_assignment7_stereo():
+    left_file = request.files.get("left")
+    right_file = request.files.get("right")
+    polygon_json = request.form.get("polygon")
+    if not left_file or not right_file or not polygon_json:
+        return jsonify({"error": "Missing left/right images or polygon"}), 400
+
+    try:
+        baseline_mm = float(request.form.get("baselineMm", "0"))
+        focal_mm = float(request.form.get("focalMm", "0"))
+        sensor_width_mm = float(request.form.get("sensorWidthMm", "0"))
+    except ValueError:
+        return jsonify({"error": "Invalid numeric parameters"}), 400
+
+    if baseline_mm <= 0 or focal_mm <= 0 or sensor_width_mm <= 0:
+        return jsonify({"error": "Baseline, focal length, and sensor width must be positive"}), 400
+
+    try:
+        import json
+
+        polygon = json.loads(polygon_json)
+        if not isinstance(polygon, list) or not polygon:
+            return jsonify({"error": "Polygon must be a non-empty array"}), 400
+    except Exception:
+        return jsonify({"error": "Invalid polygon JSON"}), 400
+
+    try:
+        left_img = stereo_load_image(left_file.read())
+        right_img = stereo_load_image(right_file.read())
+        if left_img.shape[:2] != right_img.shape[:2]:
+            return jsonify({"error": "Left/right images must have the same resolution"}), 400
+        result = stereo_measurement(
+            left_img,
+            right_img,
+            polygon,
+            focal_length_mm=focal_mm,
+            sensor_width_mm=sensor_width_mm,
+            baseline_mm=baseline_mm,
+        )
+        return jsonify(result)
+    except Exception as exc:
+        import traceback
+
+        traceback.print_exc()
+        return jsonify({"error": str(exc)}), 500
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=8000, debug=True)

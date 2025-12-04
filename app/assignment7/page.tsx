@@ -22,6 +22,7 @@ export default function Assignment7Page() {
   const [leftFile, setLeftFile] = useState<File | null>(null);
   const [rightFile, setRightFile] = useState<File | null>(null);
   const [vertices, setVertices] = useState<Vertex[]>([]);
+  const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [scale, setScale] = useState<number>(1);
   const [stereoStatus, setStereoStatus] = useState<string>('Awaiting inputs');
   const [stereoResult, setStereoResult] = useState<StereoResult | null>(null);
@@ -41,6 +42,7 @@ export default function Assignment7Page() {
       const height = img.height * ratio;
       canvas.width = width;
       canvas.height = height;
+      setCanvasSize({ width, height });
       setScale(1 / ratio);
       ctx.drawImage(img, 0, 0, width, height);
       previewImageRef.current = img;
@@ -67,8 +69,10 @@ export default function Assignment7Page() {
     (event: React.MouseEvent<HTMLCanvasElement>) => {
       if (!drawingCanvasRef.current) return;
       const rect = drawingCanvasRef.current.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
+      const scaleX = drawingCanvasRef.current.width / rect.width;
+      const scaleY = drawingCanvasRef.current.height / rect.height;
+      const x = (event.clientX - rect.left) * scaleX;
+      const y = (event.clientY - rect.top) * scaleY;
       setVertices((prev) => [...prev, { x, y }]);
     },
     [],
@@ -158,6 +162,9 @@ export default function Assignment7Page() {
               <h2 className="text-lg font-semibold text-emerald-200">1. Calibrated Stereo Measurement</h2>
               <span className="text-xs text-slate-400">{stereoStatus}</span>
             </div>
+            <p className="text-xs text-slate-400">
+              Upload a stereo pair (same resolution), draw a polygon on the LEFT image only, and input baseline/focal/sensor width.
+            </p>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2 text-sm">
                 <label className="text-slate-300">Left image</label>
@@ -185,7 +192,8 @@ export default function Assignment7Page() {
             <canvas
               ref={drawingCanvasRef}
               onClick={handleCanvasClick}
-              className="w-full max-w-full cursor-crosshair rounded border border-slate-800 bg-slate-900/60"
+              className="cursor-crosshair rounded border border-slate-800 bg-slate-900/60"
+              style={{ width: canvasSize.width || undefined, height: canvasSize.height || undefined }}
             />
             <div className="flex gap-2 text-xs text-slate-300">
               <button className="rounded border border-emerald-500/50 px-4 py-2 text-sm text-emerald-100 hover:bg-emerald-500/10" type="submit">
@@ -204,7 +212,12 @@ export default function Assignment7Page() {
             <div className="mt-4 space-y-4 text-sm text-slate-300">
               <figure className="space-y-2">
                 <figcaption className="font-semibold text-slate-100">Disparity overview</figcaption>
-                <img src={stereoResult.disparity} alt="Disparity map" className="rounded border border-slate-800" />
+                <img
+                  src={stereoResult.disparity}
+                  alt="Disparity map"
+                  className="rounded border border-slate-800"
+                  style={{ width: '100%', maxWidth: '960px', maxHeight: '540px', objectFit: 'contain' }}
+                />
               </figure>
               <div className="rounded border border-slate-800 bg-slate-900/60 p-3">
                 <p className="font-semibold text-slate-100">Segments</p>
@@ -214,11 +227,15 @@ export default function Assignment7Page() {
                       <span>
                         {index + 1}. [{segment.start.x.toFixed(1)}, {segment.start.y.toFixed(1)}] → [{segment.end.x.toFixed(1)}, {segment.end.y.toFixed(1)}]
                       </span>
-                      <span className="text-emerald-300 font-semibold">{Number(segment.length_mm).toFixed(2)} mm</span>
+                      <span className="text-emerald-300 font-semibold">
+                        {segment.length_mm != null ? `${Number(segment.length_mm).toFixed(2)} mm` : 'N/A'}
+                      </span>
                     </li>
                   ))}
                 </ul>
-                <p className="mt-2 text-xs text-slate-400">Mean span: {Number(stereoResult.mean_length_mm).toFixed(2)} mm</p>
+                <p className="mt-2 text-xs text-slate-400">
+                  Mean span: {stereoResult.mean_length_mm != null ? `${Number(stereoResult.mean_length_mm).toFixed(2)} mm` : 'N/A'}
+                </p>
               </div>
             </div>
           )}
@@ -239,6 +256,11 @@ function PoseHandSection() {
   const animationRef = useRef<number | null>(null);
   const [status, setStatus] = useState<string>('Loading models...');
   const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const cameraOnRef = useRef<boolean>(false);
+  const [cameraOn, setCameraOn] = useState<boolean>(false);
+  const poseErrorRef = useRef<boolean>(false);
+  const handErrorRef = useRef<boolean>(false);
 
   useEffect(() => {
     let mounted = true;
@@ -254,36 +276,70 @@ function PoseHandSection() {
 
     const startLoop = () => {
       const render = async () => {
-        if (!videoRef.current || !canvasRef.current) {
-          animationRef.current = requestAnimationFrame(render);
-          return;
-        }
-        const ctx = canvasRef.current.getContext('2d');
-        if (!ctx) {
-          animationRef.current = requestAnimationFrame(render);
-          return;
-        }
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
-        const now = performance.now();
-        if (poseRef.current) {
-          const result = await poseRef.current.detectForVideo(videoRef.current, now);
-          const poseLandmarks = result.landmarks?.[0];
-          if (poseLandmarks && drawUtilsRef.current) {
-            drawUtilsRef.current.drawLandmarks(poseLandmarks, { radius: 2, color: '#22d3ee' });
-            drawUtilsRef.current.drawConnectors(poseLandmarks, PoseLandmarker.POSE_CONNECTIONS, { color: '#22d3ee' });
-            appendRows('pose', now, poseLandmarks);
+        try {
+          if (!videoRef.current || !canvasRef.current || !cameraOnRef.current) {
+            animationRef.current = requestAnimationFrame(render);
+            return;
           }
-        }
-        if (handRef.current) {
-          const result = await handRef.current.detectForVideo(videoRef.current, now);
-          if (result.landmarks?.length && drawUtilsRef.current) {
-            result.landmarks.forEach((landmarks, handIndex) => {
-              drawUtilsRef.current?.drawLandmarks(landmarks, { radius: 2, color: '#f472b6' });
-              drawUtilsRef.current?.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, { color: '#f472b6' });
-              appendRows(`hand${handIndex}`, now, landmarks);
-            });
+          if (videoRef.current.readyState < 2) {
+            animationRef.current = requestAnimationFrame(render);
+            return;
           }
+          if (videoRef.current.paused) {
+            try {
+              await videoRef.current.play();
+            } catch (e) {
+              // ignore; will retry on next frame
+            }
+          }
+          const ctx = canvasRef.current.getContext('2d');
+          if (!ctx) {
+            animationRef.current = requestAnimationFrame(render);
+            return;
+          }
+          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+          ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+          const now = performance.now();
+          if (poseRef.current) {
+            try {
+              const result = await poseRef.current.detectForVideo(videoRef.current, now);
+              const poseLandmarks = result.landmarks?.[0];
+              if (poseLandmarks && drawUtilsRef.current) {
+                drawUtilsRef.current.drawLandmarks(poseLandmarks, { radius: 2, color: '#22d3ee' });
+                drawUtilsRef.current.drawConnectors(poseLandmarks, PoseLandmarker.POSE_CONNECTIONS, { color: '#22d3ee' });
+                appendRows('pose', now, poseLandmarks);
+              }
+              poseErrorRef.current = false;
+            } catch (e: any) {
+              if (!poseErrorRef.current) {
+                console.warn('Pose detect error', e?.message ?? e);
+                setStatus('Pose detect error; retrying...');
+                poseErrorRef.current = true;
+              }
+            }
+          }
+          if (handRef.current) {
+            try {
+              const result = await handRef.current.detectForVideo(videoRef.current, now);
+              if (result.landmarks?.length && drawUtilsRef.current) {
+                result.landmarks.forEach((landmarks, handIndex) => {
+                  drawUtilsRef.current?.drawLandmarks(landmarks, { radius: 2, color: '#f472b6' });
+                  drawUtilsRef.current?.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, { color: '#f472b6' });
+                  appendRows(`hand${handIndex}`, now, landmarks);
+                });
+              }
+              handErrorRef.current = false;
+            } catch (e: any) {
+              if (!handErrorRef.current) {
+                console.warn('Hand detect error', e?.message ?? e);
+                setStatus('Hand detect error; retrying...');
+                handErrorRef.current = true;
+              }
+            }
+          }
+        } catch (err: any) {
+          console.error('Pose/hand loop error', err);
+          setStatus(err?.message ?? 'Tracking error');
         }
         animationRef.current = requestAnimationFrame(render);
       };
@@ -311,17 +367,11 @@ function PoseHandSection() {
           runningMode: 'VIDEO',
           numHands: 2,
         });
-        setStatus('Models loaded. Requesting camera...');
-        if (!mounted) return;
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 }, audio: false });
-        if (!videoRef.current) return;
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        setStatus('Models loaded. Camera off.');
         if (!canvasRef.current) return;
         const ctx = canvasRef.current.getContext('2d');
         if (!ctx) return;
         drawUtilsRef.current = new DrawingUtils(ctx);
-        setStatus('Tracking in progress...');
         startLoop();
       } catch (error) {
         console.error(error);
@@ -331,12 +381,55 @@ function PoseHandSection() {
     return () => {
       mounted = false;
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      if (videoRef.current?.srcObject) {
-        (videoRef.current.srcObject as MediaStream)
-          .getTracks()
-          .forEach((track) => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
       }
     };
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    try {
+      setStatus('Requesting camera...');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 }, audio: false });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await new Promise<void>((resolve, reject) => {
+          const v = videoRef.current!;
+          v.onloadedmetadata = () => resolve();
+          v.onerror = (e) => reject(e);
+        });
+        await videoRef.current.play();
+      }
+      if (canvasRef.current) {
+        canvasRef.current.width = 640;
+        canvasRef.current.height = 360;
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        }
+      }
+      cameraOnRef.current = true;
+      setCameraOn(true);
+      setStatus('Tracking in progress...');
+    } catch (error: any) {
+      console.error(error);
+      setStatus(error?.message ?? 'Camera access failed.');
+      cameraOnRef.current = false;
+      setCameraOn(false);
+    }
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    cameraOnRef.current = false;
+    setCameraOn(false);
+    setStatus('Camera stopped.');
   }, []);
 
   const downloadCsv = useCallback(() => {
@@ -367,6 +460,24 @@ function PoseHandSection() {
         <video ref={videoRef} muted playsInline className="hidden" />
         <canvas ref={canvasRef} width={640} height={360} className="w-full rounded border border-slate-800 bg-black" />
         <div className="space-y-3 text-xs text-slate-400">
+          <div className="flex gap-2 text-sm">
+            <button
+              className="rounded border border-sky-500/50 px-3 py-2 text-sky-100 hover:bg-sky-500/10 disabled:opacity-50"
+              type="button"
+              onClick={startCamera}
+              disabled={cameraOn}
+            >
+              Start Camera
+            </button>
+            <button
+              className="rounded border border-slate-600 px-3 py-2 text-slate-200 hover:bg-slate-800/80 disabled:opacity-50"
+              type="button"
+              onClick={stopCamera}
+              disabled={!cameraOn}
+            >
+              Stop Camera
+            </button>
+          </div>
           <p>Tracking data rows captured: {csvRows.length}</p>
           <button className="rounded border border-sky-500/50 px-4 py-2 text-sm text-sky-100 hover:bg-sky-500/10" onClick={downloadCsv} type="button">
             Download CSV

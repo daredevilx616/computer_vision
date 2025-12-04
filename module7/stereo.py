@@ -80,9 +80,10 @@ def polygon_measurements(
         y0 = int(round(y))
         half = 3
         patch = disparity[max(0, y0 - half) : y0 + half + 1, max(0, x0 - half) : x0 + half + 1]
-        disp = np.nanmean(patch)
-        if np.isnan(disp) or disp <= 0:
-            vertices_world.append({"x": x, "y": y, "z_mm": float("nan")})
+        finite = patch[np.isfinite(patch) & (patch > 0.5)]
+        disp = np.nanmedian(finite) if finite.size else np.nan
+        if np.isnan(disp) or disp <= 0.5:
+            vertices_world.append({"pixel_x": x, "pixel_y": y, "z_mm": None})
             continue
         z_mm = (focal_px * baseline_mm) / disp
         X = (x - cx) * z_mm / focal_px
@@ -93,8 +94,8 @@ def polygon_measurements(
     for idx in range(len(vertices_world)):
         start = vertices_world[idx]
         end = vertices_world[(idx + 1) % len(vertices_world)]
-        if any(np.isnan([start["z_mm"], end["z_mm"]])):
-            length = float("nan")
+        if start.get("z_mm") is None or end.get("z_mm") is None:
+            length = None
         else:
             dx = end["x_mm"] - start["x_mm"]
             dy = end["y_mm"] - start["y_mm"]
@@ -122,11 +123,11 @@ def stereo_measurement(
     focal_px = pixel_to_metric_scale(left.shape[1], focal_length_mm, sensor_width_mm)
     vertices, segments = polygon_measurements(disparity, polygon, focal_px, baseline_mm)
     disparity_url = disparity_to_data_url(disparity)
-    valid_lengths = [seg["length_mm"] for seg in segments if not np.isnan(seg["length_mm"])]
+    valid_lengths = [seg["length_mm"] for seg in segments if seg["length_mm"] is not None]
     summary = {
         "disparity": disparity_url,
         "vertices": vertices,
         "segments": segments,
-        "mean_length_mm": float(np.mean(valid_lengths)) if valid_lengths else float("nan"),
+        "mean_length_mm": float(np.mean(valid_lengths)) if valid_lengths else None,
     }
     return summary
