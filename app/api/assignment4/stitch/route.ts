@@ -68,7 +68,10 @@ export async function POST(request: Request) {
   try {
     await ensureDirs();
     const formData = await request.formData();
-    const images = formData.getAll('images').filter((value): value is File => value instanceof File);
+    // Accept any FormDataEntryValue that behaves like a Blob (has arrayBuffer)
+    const images = formData
+      .getAll('images')
+      .filter((value) => typeof (value as any)?.arrayBuffer === 'function') as Blob[];
     if (images.length < 2) {
       return NextResponse.json({ error: 'Upload at least two images for stitching.' }, { status: 400 });
     }
