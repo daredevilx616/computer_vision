@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   try {
     await ensureDirs();
     const formData = await request.formData();
-    const images = formData.getAll('images').filter((value): value is Blob => value instanceof Blob);
+    const images = formData.getAll('images').filter((value): value is File => value instanceof File);
     if (images.length < 2) {
       return NextResponse.json({ error: 'Upload at least two images for stitching.' }, { status: 400 });
     }
