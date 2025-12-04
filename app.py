@@ -7,6 +7,7 @@ import numpy as np
 
 from module2.fourier_deblur import process_image as fourier_process
 from module2 import run_template_matching as tm
+from module56.tracking import detect_aruco_backend, markerless_step_backend
 
 app = Flask(__name__)
 
@@ -60,6 +61,10 @@ def _resize_max(image: np.ndarray, max_dim: int = 1400) -> np.ndarray:
         return image
     new_size = (int(w / scale), int(h / scale))
     return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
+
+
+def _clamp_int(value: float, min_val: int, max_val: int) -> int:
+    return max(min_val, min(int(round(value)), max_val))
 
 @app.route("/")
 def index():
@@ -368,6 +373,71 @@ def api_stitch():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ---------------- Module 5-6: Tracking -----------------
+@app.route("/api/assignment56/aruco", methods=["POST"])
+def api_assignment56_aruco():
+    """Detect ArUco/AprilTag-like fiducials server-side for robustness."""
+    upload = request.files.get("frame")
+    if not upload or not upload.filename:
+        return jsonify({"error": "Missing 'frame' upload"}), 400
+
+    try:
+        result = detect_aruco_backend(
+            upload.read(),
+            dict_name=request.form.get("dictionary", "DICT_4X4_50"),
+            max_dim=int(os.getenv("ASSIGN56_MAX_DIM", "960")),
+        )
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 400
+
+
+@app.route("/api/assignment56/markerless", methods=["POST"])
+def api_assignment56_markerless():
+    """
+    Single-step color-based tracker update.
+    Inputs (form-data):
+      - frame: image upload (required)
+      - x, y, w, h: current box (required)
+      - color_h, color_s, color_v: optional reference color (0-180, 0-255, 0-255)
+      - search_pad: optional expansion around box (default 40 px)
+    """
+    upload = request.files.get("frame")
+    if not upload or not upload.filename:
+        return jsonify({"error": "Missing 'frame' upload"}), 400
+
+    try:
+        x = float(request.form.get("x", "0"))
+        y = float(request.form.get("y", "0"))
+        w = float(request.form.get("w", "0"))
+        h = float(request.form.get("h", "0"))
+    except ValueError:
+        return jsonify({"error": "Invalid bbox values"}), 400
+
+    if w <= 0 or h <= 0:
+        return jsonify({"error": "Bounding box must be positive"}), 400
+
+    try:
+        result = markerless_step_backend(
+            upload.read(),
+            x=x,
+            y=y,
+            w=w,
+            h=h,
+            color=[
+                float(request.form.get("color_h")),
+                float(request.form.get("color_s")),
+                float(request.form.get("color_v")),
+            ]
+            if all(k in request.form for k in ["color_h", "color_s", "color_v"])
+            else None,
+            search_pad=float(request.form.get("search_pad", "40")),
+        )
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 400
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=8000, debug=True)
