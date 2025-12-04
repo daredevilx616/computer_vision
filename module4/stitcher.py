@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import base64
+import os
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
 import cv2
 import numpy as np
 
-from .sift import SIFTResult, draw_matches, match_descriptors, ransac_homography, sift
-
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "output"  # unused now but kept for compatibility
+
+MAX_STITCH_DIM = int(os.getenv("MODULE4_STITCH_MAX_DIM", "1600"))
 
 
 def _to_data_url(image: np.ndarray) -> str:
@@ -22,54 +22,15 @@ def _to_data_url(image: np.ndarray) -> str:
     return f"data:image/png;base64,{base64.b64encode(buf).decode('ascii')}"
 
 
-def find_best_matches(sift_results: List[SIFTResult]) -> List[tuple]:
-    """Find best matching pairs to determine image ordering."""
-    match_scores = []
-    n = len(sift_results)
-    for i in range(n):
-        for j in range(i + 1, n):
-            matches = match_descriptors(sift_results[i].descriptors, sift_results[j].descriptors)
-            if len(matches) >= 4:
-                match_scores.append((i, j, len(matches)))
-    return sorted(match_scores, key=lambda x: x[2], reverse=True)
-
-
-def alpha_blend(img1: np.ndarray, img2: np.ndarray, mask1: np.ndarray, mask2: np.ndarray) -> np.ndarray:
-    """Blend two images with feathering at overlaps."""
-    overlap = (mask1 > 0) & (mask2 > 0)
-
-    # Distance transform for feathering
-    dist1 = cv2.distanceTransform((mask1 * 255).astype(np.uint8), cv2.DIST_L2, 3)
-    dist2 = cv2.distanceTransform((mask2 * 255).astype(np.uint8), cv2.DIST_L2, 3)
-
-    # Normalize distances
-    total_dist = dist1 + dist2 + 1e-6
-    alpha1 = dist1 / total_dist
-    alpha2 = dist2 / total_dist
-
-    # Blend
-    result = np.zeros_like(img1)
-    result[overlap] = (img1[overlap] * alpha1[overlap, None] + img2[overlap] * alpha2[overlap, None]).astype(np.uint8)
-    result[mask1 & ~overlap] = img1[mask1 & ~overlap]
-    result[mask2 & ~overlap] = img2[mask2 & ~overlap]
-
-    return result
-
-
-def cylindrical_warp(image: np.ndarray, focal: float | None = None) -> np.ndarray:
-    """Warp an image to cylindrical coordinates to reduce bending in panoramas."""
+def _resize_max_dim(image: np.ndarray, max_dim: int) -> np.ndarray:
+    """Downscale image so the longest side is <= max_dim."""
     h, w = image.shape[:2]
-    cx, cy = w / 2.0, h / 2.0
-    f = focal if focal is not None else 0.8 * max(h, w)
-    y_idx, x_idx = np.indices((h, w), dtype=np.float32)
-    theta = (x_idx - cx) / f
-    h_ = (y_idx - cy) / f
-    X = f * np.tan(theta) + cx
-    Y = f * h_ / np.cos(theta) + cy
-    map_x = X.astype(np.float32)
-    map_y = Y.astype(np.float32)
-    warped = cv2.remap(image, map_x, map_y, cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-    return warped
+    longest = max(h, w)
+    if longest <= max_dim:
+        return image
+    scale = max_dim / float(longest)
+    new_size = (max(1, int(w * scale)), max(1, int(h * scale)))
+    return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
 
 
 def stitch_images(images: List[np.ndarray]) -> dict:
@@ -79,30 +40,14 @@ def stitch_images(images: List[np.ndarray]) -> dict:
 
     print(f"[Stitcher] Starting horizontal panorama with {len(images)} images", file=sys.stderr)
 
+    # Downscale inputs so Stitcher stays within Render's worker timeout.
+    resized_for_stitch = [_resize_max_dim(img, MAX_STITCH_DIM) for img in images]
+
+    # Match visuals removed to avoid extra SIFT work in constrained environments.
     match_visuals: List[str] = []
 
-    # Optional SIFT debug visuals (data URLs only)
-    sift_results: List[SIFTResult] = [sift(img) for img in images]
-
-    for idx in range(len(images) - 1):
-        matches = match_descriptors(sift_results[idx].descriptors, sift_results[idx + 1].descriptors)
-        print(f"[Stitcher] Image {idx} to {idx+1}: {len(matches)} matches", file=sys.stderr)
-
-        inliers = list(range(len(matches)))  # just for visualization
-
-        match_vis = draw_matches(
-            images[idx],
-            images[idx + 1],
-            sift_results[idx].keypoints,
-            sift_results[idx + 1].keypoints,
-            matches,
-            inliers,
-        )
-        match_visuals.append(_to_data_url(match_vis))
-
-    # --- actual panorama stitching (same way I did it earlier) ---
     stitcher = cv2.Stitcher_create(cv2.Stitcher_PANORAMA)
-    status, pano = stitcher.stitch(images)
+    status, pano = stitcher.stitch(resized_for_stitch)
 
     if status != cv2.Stitcher_OK:
         raise RuntimeError(f"Stitching failed with status code: {status}")

@@ -108,6 +108,9 @@ export default function Assignment4Page() {
               <h2 className="text-lg font-semibold text-sky-200">Panorama Stitcher (&gt;=4 landscape frames)</h2>
               <span className="text-xs text-slate-400">{stitchStatus}</span>
             </div>
+            <p className="text-xs text-slate-400">
+              Note: SIFT match visuals are disabled in the panorama step to keep Render workers within compute limits.
+            </p>
             <input
               name="stitchImages"
               multiple
