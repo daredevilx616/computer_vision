@@ -51,6 +51,16 @@ def _side_by_side(img_a: np.ndarray, img_b: np.ndarray) -> np.ndarray:
     canvas[: img_b.shape[0], img_a.shape[1] :] = img_b
     return canvas
 
+
+def _resize_max(image: np.ndarray, max_dim: int = 1400) -> np.ndarray:
+    """Resize image so the longest side <= max_dim, preserving aspect ratio."""
+    h, w = image.shape[:2]
+    scale = max(h, w) / float(max_dim)
+    if scale <= 1.0:
+        return image
+    new_size = (int(w / scale), int(h / scale))
+    return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -332,28 +342,29 @@ def api_sift():
 
 @app.route("/api/assignment4/stitch", methods=["POST"])
 def api_stitch():
-    images = [f for f in request.files.getlist("images") if f.filename]
-    if len(images) < 2:
+    uploads = [f for f in request.files.getlist("images") if f.filename]
+    if len(uploads) < 2:
         return jsonify({"error": "Upload at least two images for stitching."}), 400
 
-    # Use module4 directory in project root (works on Windows and Linux)
-    base_dir = Path(__file__).resolve().parent / "module4"
-    uploads_dir = base_dir / "uploads"
-    output_dir = base_dir / "output"
-    uploads_dir.mkdir(parents=True, exist_ok=True)
+    base_tmp = Path(os.getenv("MODULE4_BASE_DIR", "/tmp/module4"))
+    output_dir = base_tmp / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    paths = []
-    for idx, f in enumerate(images):
-        path = uploads_dir / f"{idx}_{f.filename}"
-        f.save(path)
-        paths.append(path)
+    images = []
+    for f in uploads:
+        data = f.read()
+        img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+        if img is None:
+            continue
+        images.append(img)
+
+    if len(images) < 2:
+        return jsonify({"error": "Failed to decode uploaded images."}), 400
 
     import module4.stitcher as mstitch
     mstitch.OUTPUT_DIR = output_dir
     try:
-        imgs = [cv2.imread(str(p)) for p in paths]
-        result = mstitch.stitch_images(imgs)
+        result = mstitch.stitch_images(images)
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

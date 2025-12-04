@@ -12,8 +12,7 @@ import numpy as np
 from .sift import SIFTResult, draw_matches, match_descriptors, ransac_homography, sift
 
 BASE_DIR = Path(__file__).resolve().parent
-OUTPUT_DIR = BASE_DIR / "output"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_DIR = BASE_DIR / "output"  # unused now but kept for compatibility
 
 
 def _to_data_url(image: np.ndarray) -> str:
@@ -82,19 +81,14 @@ def stitch_images(images: List[np.ndarray]) -> dict:
 
     match_visuals: List[str] = []
 
-    # --- (optional) SIFT debug visualizations between consecutive pairs ---
-    # This keeps using your own SIFT + draw_matches so you still get
-    # nice match visual outputs in the UI.
+    # Optional SIFT debug visuals (data URLs only)
     sift_results: List[SIFTResult] = [sift(img) for img in images]
 
     for idx in range(len(images) - 1):
-        matches = match_descriptors(
-            sift_results[idx].descriptors,
-            sift_results[idx + 1].descriptors,
-        )
+        matches = match_descriptors(sift_results[idx].descriptors, sift_results[idx + 1].descriptors)
         print(f"[Stitcher] Image {idx} to {idx+1}: {len(matches)} matches", file=sys.stderr)
 
-        inliers = list(range(len(matches)))  # we’re just visualizing, no RANSAC needed here
+        inliers = list(range(len(matches)))  # just for visualization
 
         match_vis = draw_matches(
             images[idx],
@@ -104,8 +98,6 @@ def stitch_images(images: List[np.ndarray]) -> dict:
             matches,
             inliers,
         )
-        match_path = OUTPUT_DIR / f"matches_{idx}_{idx + 1}.png"
-        cv2.imwrite(str(match_path), match_vis)
         match_visuals.append(_to_data_url(match_vis))
 
     # --- actual panorama stitching (same way I did it earlier) ---
@@ -117,12 +109,7 @@ def stitch_images(images: List[np.ndarray]) -> dict:
 
     print(f"[Stitcher] Stitching succeeded, panorama size: {pano.shape[1]}x{pano.shape[0]}", file=sys.stderr)
 
-    pano_path = OUTPUT_DIR / "stitched_panorama.png"
-    cv2.imwrite(str(pano_path), pano)
-    print(f"[Stitcher] Panorama saved to {pano_path}", file=sys.stderr)
-
     return {
         "panorama": _to_data_url(pano),
-        "panorama_path": str(pano_path),
         "match_visuals": match_visuals,
     }
