@@ -204,30 +204,18 @@ export default function Page() {
           </div>
         </div>
 
-        <aside className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4 h-fit">
+        <div className="mt-8 w-full max-w-4xl space-y-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
           <p className="text-sm font-semibold text-slate-100">Recorded walkthrough</p>
           <div className="w-full overflow-hidden rounded border border-slate-800 bg-black aspect-video">
             <iframe
               className="w-full h-full"
-              src="https://www.youtube.com/embed/s_B8JZ-PiSM"
+              src="https://www.youtube.com/embed/Gz6gL7Fl0mE"
               title="Module 1 demo"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
           </div>
-          <div className="pt-2 border-t border-slate-800">
-            <p className="text-sm font-semibold text-slate-100">Worksheet (PDF)</p>
-            <a href="/docs/module1_worksheet.pdf" className="text-xs text-blue-300 underline" target="_blank" rel="noreferrer">
-              Open Module 1 worksheet
-            </a>
-            <div className="mt-2 text-xs text-slate-400">
-              GitHub repo:{" "}
-              <a href="https://github.com/daredevilx616/computer_vision" className="text-blue-300 underline" target="_blank" rel="noreferrer">
-                github.com/daredevilx616/computer_vision
-              </a>
-            </div>
-          </div>
-        </aside>
+        </div>
       </div>
     </div>
   );

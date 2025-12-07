@@ -108,6 +108,12 @@ export default function Home() {
             Launch the individual assignment demos directly from here. Each button routes to a page connected to its Python backend so you can upload
             data, run the experiment, and capture screenshots without juggling scripts.
           </p>
+          <p className="text-xs text-slate-400">
+            GitHub repo:{' '}
+            <a href="https://github.com/daredevilx616/computer_vision" className="text-blue-300 underline" target="_blank" rel="noreferrer">
+              github.com/daredevilx616/computer_vision
+            </a>
+          </p>
           <div className="flex flex-wrap gap-3">
             {moduleLinks.map((link) => (
               <Link
