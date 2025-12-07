@@ -242,6 +242,29 @@ export default function Assignment7Page() {
         </section>
 
         <PoseHandSection />
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
+          <h2 className="text-lg font-semibold text-slate-100">Stereo + Pose Demo Video</h2>
+          <div className="w-full overflow-hidden rounded border border-slate-800 bg-black">
+            <iframe
+              className="w-full"
+              style={{ aspectRatio: '16 / 9', minHeight: '315px' }}
+              src="https://www.youtube.com/embed/8k0sCXtD7ig"
+              title="Module 7 demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              frameBorder="0"
+            />
+          </div>
+          <a
+            href="https://youtu.be/8k0sCXtD7ig"
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm text-emerald-200 underline hover:text-emerald-100"
+          >
+            Open video in a new tab
+          </a>
+        </section>
       </div>
     </div>
   );
